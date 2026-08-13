@@ -6,13 +6,14 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { SignInScheduleGraphic } from "../components/auth/SignInScheduleGraphic";
 import { strings } from "../content/strings";
+import { ApiError } from "../api/client";
 import { useLogin, useLogout } from "../hooks/useAuth";
 import { useAuthStore } from "../store/authStore";
 import type { UserRole } from "../types/auth";
 
 const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z.string().email("Enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -31,7 +32,7 @@ export function SignInPage() {
   const logout = useLogout();
   const navigate = useNavigate();
   const [intendedRole, setIntendedRole] = useState<UserRole>("patient");
-  const [roleError, setRoleError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const {
     register,
@@ -47,23 +48,34 @@ export function SignInPage() {
   }
 
   const onSubmit = handleSubmit(async (values) => {
-    setRoleError(null);
+    setFormError(null);
     try {
       const data = await login.mutateAsync(values);
       if (data.role !== intendedRole) {
         logout();
-        setRoleError(strings.signIn.roleMismatch);
+        setFormError(strings.signIn.roleMismatch);
         return;
       }
       navigate(data.role === "admin" ? "/admin" : "/book", { replace: true });
-    } catch {
-      // login.isError renders the credentials message
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 0) {
+          setFormError(strings.signIn.networkError);
+        } else if (err.status === 401) {
+          setFormError(strings.signIn.error);
+        } else if (err.status >= 500) {
+          setFormError(err.message || strings.signIn.serverError);
+        } else {
+          setFormError(err.message || strings.signIn.error);
+        }
+        return;
+      }
+      setFormError(strings.signIn.networkError);
     }
   });
 
   return (
     <div className="flex min-h-screen w-full">
-      {/* LEFT PANEL */}
       <aside className="relative flex min-h-screen w-1/2 flex-col bg-[var(--color-navy-950)] p-12">
         <div
           className="font-semibold tracking-[-0.01em] text-[var(--color-white)]"
@@ -90,9 +102,8 @@ export function SignInPage() {
         </div>
       </aside>
 
-      {/* RIGHT PANEL */}
       <main className="flex min-h-screen w-1/2 items-center justify-center bg-[var(--color-white)] px-8">
-        <form className="flex w-full max-w-[360px] flex-col gap-6" onSubmit={onSubmit}>
+        <form className="flex w-full max-w-[360px] flex-col gap-6" onSubmit={onSubmit} noValidate>
           <div className="flex flex-col gap-1.5">
             <h1
               className="font-semibold tracking-[-0.01em] text-[var(--color-ink)]"
@@ -108,7 +119,6 @@ export function SignInPage() {
             </p>
           </div>
 
-          {/* Role toggle */}
           <div
             className="flex gap-1 rounded-[var(--radius-lg)] bg-[var(--color-grey-100)] p-1"
             role="tablist"
@@ -126,7 +136,7 @@ export function SignInPage() {
                   aria-selected={active}
                   onClick={() => {
                     setIntendedRole(r);
-                    setRoleError(null);
+                    setFormError(null);
                   }}
                   className={`flex-1 rounded-[var(--radius-md)] py-2 text-center font-medium transition ${
                     active
@@ -152,6 +162,7 @@ export function SignInPage() {
               <input
                 type="email"
                 autoComplete="username"
+                aria-invalid={Boolean(errors.email)}
                 className="h-10 rounded-[var(--radius-md)] border border-[var(--color-grey-200)] bg-[var(--color-white)] px-3 text-[var(--color-ink)] shadow-[var(--shadow-xs)] outline-none focus:border-[var(--color-navy-600)]"
                 style={{ fontSize: "var(--text-14)" }}
                 {...register("email")}
@@ -160,6 +171,7 @@ export function SignInPage() {
                 <span
                   className="text-[var(--color-salmon-700)]"
                   style={{ fontSize: "var(--text-12)" }}
+                  role="alert"
                 >
                   {errors.email.message}
                 </span>
@@ -184,6 +196,7 @@ export function SignInPage() {
               <input
                 type="password"
                 autoComplete="current-password"
+                aria-invalid={Boolean(errors.password)}
                 className="h-10 rounded-[var(--radius-md)] border border-[var(--color-grey-300)] bg-[var(--color-white)] px-3 tracking-[0.18em] text-[var(--color-grey-700)] shadow-[var(--shadow-xs)] outline-none focus:border-[var(--color-navy-600)]"
                 style={{ fontSize: "var(--text-14)" }}
                 {...register("password")}
@@ -192,6 +205,7 @@ export function SignInPage() {
                 <span
                   className="text-[var(--color-salmon-700)]"
                   style={{ fontSize: "var(--text-12)" }}
+                  role="alert"
                 >
                   {errors.password.message}
                 </span>
@@ -199,17 +213,18 @@ export function SignInPage() {
             </label>
           </div>
 
-          {login.isError || roleError ? (
+          {formError ? (
             <p
-              className="text-[var(--color-salmon-700)]"
-              style={{ fontSize: "var(--text-13)" }}
+              className="rounded-[var(--radius-md)] border border-[var(--color-salmon-200)] bg-[var(--color-salmon-50)] px-3 py-2 text-[var(--color-salmon-700)]"
+              style={{ fontSize: "var(--text-13)", lineHeight: 1.4 }}
+              role="alert"
             >
-              {roleError ?? strings.signIn.error}
+              {formError}
             </p>
           ) : null}
 
           <Button type="submit" className="w-full" disabled={login.isPending}>
-            {strings.signIn.submit}
+            {login.isPending ? strings.common.loading : strings.signIn.submit}
           </Button>
 
           <div className="flex items-center gap-3">

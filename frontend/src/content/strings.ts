@@ -16,6 +16,9 @@ export const strings = {
     roleAdmin: "Admin",
     roleToggleAria: "Account role",
     error: "Invalid email or password",
+    networkError:
+      "Cannot reach the server. It may be waking up — wait a moment and try again.",
+    serverError: "Something went wrong on the server. Please try again.",
     roleMismatch:
       "This account does not match the selected role. Choose the correct role or use a different account.",
     frameHint: "Frame 01 · Sign in",
