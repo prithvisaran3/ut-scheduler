@@ -22,6 +22,17 @@ export const strings = {
     roleMismatch:
       "This account does not match the selected role. Choose the correct role or use a different account.",
     frameHint: "Frame 01 · Sign in",
+    modeSignIn: "Sign in",
+    modeSignUp: "Create account",
+    modeToggleAria: "Authentication mode",
+    signUpTitle: "Create your account",
+    signUpSubtitle: "Register as a patient to book treatment pathways.",
+    fullNameLabel: "Full name",
+    signUpSubmit: "Create account",
+    signUpSwitch: "Already have an account? Sign in",
+    signInSwitch: "New here? Create an account",
+    emailTaken: "That email is already registered. Sign in instead.",
+    signUpError: "Could not create your account. Please try again.",
   },
   patient: {
     title: "Book a pathway",
@@ -105,6 +116,7 @@ export const strings = {
     gap: "Gap",
     scan: "Scan",
     patient: "Patient",
+    unavailable: "Unavailable",
   },
   common: {
     loading: "Loading…",

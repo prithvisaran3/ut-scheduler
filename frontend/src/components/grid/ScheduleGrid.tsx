@@ -164,6 +164,7 @@ export function ScheduleGrid({
                   key={slot.slot_index}
                   slot={slot}
                   resourceType={col.resource_type}
+                  mode={mode}
                   selected={
                     !!drag &&
                     drag.colIndex === colIndex &&

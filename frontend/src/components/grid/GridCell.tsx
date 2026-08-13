@@ -1,8 +1,10 @@
 import type { ResourceSlot } from "../../types/schedule";
+import { strings } from "../../content/strings";
 
 interface Props {
   slot: ResourceSlot;
   resourceType: string;
+  mode?: "patient" | "admin";
   selected?: boolean;
   onMouseDown?: () => void;
   onMouseEnter?: () => void;
@@ -11,6 +13,7 @@ interface Props {
 export function GridCell({
   slot,
   resourceType,
+  mode = "admin",
   selected,
   onMouseDown,
   onMouseEnter,
@@ -18,6 +21,12 @@ export function GridCell({
   const isGap = resourceType === "gap";
   const occupied = slot.occupied > 0;
   const blocked = slot.blocked;
+  const showName =
+    mode === "admin" && occupied && !isGap && !!slot.occupants[0]?.patient_name;
+  const unavailableHint =
+    mode === "patient" && !isGap && (occupied || blocked)
+      ? strings.grid.unavailable
+      : undefined;
 
   let bg = "transparent";
   if (blocked && !isGap) bg = "var(--color-grey-200)";
@@ -33,10 +42,12 @@ export function GridCell({
         background: bg,
         cursor: isGap || resourceType === "patient" ? "default" : "crosshair",
       }}
+      title={unavailableHint}
+      aria-label={unavailableHint}
       onMouseDown={onMouseDown}
       onMouseEnter={onMouseEnter}
     >
-      {occupied && !isGap && slot.occupants[0]?.patient_name ? (
+      {showName ? (
         <span className="absolute inset-x-1 top-1 truncate text-[length:var(--text-10)] text-[var(--color-white)]">
           {slot.occupants[0].patient_name}
         </span>

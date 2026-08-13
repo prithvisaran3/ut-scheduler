@@ -157,9 +157,15 @@ def confirm_booking(db: Session, patient: User, data: BookingCreateRequest) -> B
             )
         else:
             res = resources_by_type.get(rtype)
+            if res is None:
+                db.rollback()
+                raise ValueError(
+                    f"No resource configured for type {rtype}; refusing to create booking "
+                    "with a null resource_id"
+                )
             booking.slots.append(
                 BookingSlot(
-                    resource_id=res.id if res else None,
+                    resource_id=res.id,
                     resource_type=StepResourceType(rtype),
                     slot_index=slot_index,
                 )

@@ -4,7 +4,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, func
+from sqlalchemy import CheckConstraint, Date, DateTime, Enum, ForeignKey, Integer, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -40,9 +40,16 @@ class Booking(Base):
 
 
 class BookingSlot(Base):
-    """One occupied slot in a booking. resource_id is null for gap slots."""
+    """One occupied slot in a booking. resource_id is null only for gap slots."""
 
     __tablename__ = "booking_slots"
+    __table_args__ = (
+        CheckConstraint(
+            "(resource_type = 'gap' AND resource_id IS NULL) OR "
+            "(resource_type <> 'gap' AND resource_id IS NOT NULL)",
+            name="ck_booking_slots_resource_id_for_nongap",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     booking_id: Mapped[uuid.UUID] = mapped_column(

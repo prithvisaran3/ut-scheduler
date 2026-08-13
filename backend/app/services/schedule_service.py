@@ -30,11 +30,26 @@ from app.services.scheduling_engine import RESOURCE_INDEX
 
 
 def get_resources_by_type(db: Session) -> dict[str, Resource]:
-    resources = db.scalars(select(Resource)).all()
+    """Return one Resource per type (oldest wins if duplicates exist)."""
+    resources = db.scalars(
+        select(Resource).order_by(Resource.created_at.asc(), Resource.id.asc())
+    ).all()
     by_type: dict[str, Resource] = {}
     for r in resources:
-        by_type[r.type.value] = r
+        if r.type.value not in by_type:
+            by_type[r.type.value] = r
     return by_type
+
+
+def find_duplicate_resources(db: Session) -> dict[str, list[Resource]]:
+    """Resources sharing a type — keyed by type value, oldest first."""
+    resources = db.scalars(
+        select(Resource).order_by(Resource.created_at.asc(), Resource.id.asc())
+    ).all()
+    grouped: dict[str, list[Resource]] = {}
+    for r in resources:
+        grouped.setdefault(r.type.value, []).append(r)
+    return {k: v for k, v in grouped.items() if len(v) > 1}
 
 
 def build_used_matrix(
@@ -67,9 +82,12 @@ def build_used_matrix(
 
     for booking in bookings:
         for slot in booking.slots:
-            if slot.resource_type.value == "gap" or slot.resource_id is None:
-                continue
             rtype = slot.resource_type.value
+            # Occupancy is by resource_type (same as the grid). Never skip
+            # non-gap slots just because resource_id is NULL — that caused
+            # engine/grid disagreement and colliding offers.
+            if rtype == "gap":
+                continue
             if rtype in RESOURCE_INDEX:
                 used[RESOURCE_INDEX[rtype], slot.slot_index] += 1
 
@@ -78,7 +96,9 @@ def build_used_matrix(
         block_q = block_q.with_for_update()
     blocks = db.scalars(block_q).all()
 
-    resource_id_to_type = {r.id: r.type.value for r in resources_by_type.values()}
+    # Map every resource row (including duplicates) so admin blocks never vanish.
+    all_resources = db.scalars(select(Resource)).all()
+    resource_id_to_type = {r.id: r.type.value for r in all_resources}
     for block in blocks:
         rtype = resource_id_to_type.get(block.resource_id)
         if rtype is None or rtype not in RESOURCE_INDEX:
@@ -113,8 +133,17 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
     for b in blocks:
         blocked_by_resource.setdefault(b.resource_id, set()).add(b.slot_index)
 
-    # occupancy maps: resource_type -> slot_index -> list of occupants
+    # Union of blocks across every resource row of a given type (duplicate-safe).
+    blocked_by_type: dict[str, set[int]] = {}
+    for res in db.scalars(select(Resource)).all():
+        blocked_by_type.setdefault(res.type.value, set()).update(
+            blocked_by_resource.get(res.id, set())
+        )
+
+    # occupancy maps: resource_type -> slot_index -> list of occupants (admin only)
+    # Patients get counts only — never booking_id / patient_name / pathway_name.
     occupants: dict[str, dict[int, list[OccupantOut]]] = {t: {} for t in RESOURCE_TYPES}
+    occupied_counts: dict[str, dict[int, int]] = {t: {} for t in RESOURCE_TYPES}
     gap_occupied: dict[int, int] = {}
 
     for booking in bookings:
@@ -123,12 +152,17 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
             if rtype == "gap":
                 gap_occupied[slot.slot_index] = gap_occupied.get(slot.slot_index, 0) + 1
                 continue
-            info = OccupantOut(
-                booking_id=booking.id,
-                patient_name=booking.patient.full_name if is_admin else None,
-                pathway_name=booking.pathway.name if booking.pathway else None,
+            occupied_counts.setdefault(rtype, {})
+            occupied_counts[rtype][slot.slot_index] = (
+                occupied_counts[rtype].get(slot.slot_index, 0) + 1
             )
-            occupants.setdefault(rtype, {}).setdefault(slot.slot_index, []).append(info)
+            if is_admin:
+                info = OccupantOut(
+                    booking_id=booking.id,
+                    patient_name=booking.patient.full_name,
+                    pathway_name=booking.pathway.name if booking.pathway else None,
+                )
+                occupants.setdefault(rtype, {}).setdefault(slot.slot_index, []).append(info)
 
     columns: list[ResourceColumnOut] = []
 
@@ -202,11 +236,15 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
         resource = resources_by_type.get(rtype)
         if resource is None:
             continue
-        blocked_slots = blocked_by_resource.get(resource.id, set())
+        blocked_slots = blocked_by_type.get(rtype, set())
         slots = []
         for i in range(SLOTS_PER_DAY):
-            occ_list = occupants.get(rtype, {}).get(i, [])
-            occupied = len(occ_list)
+            occ_list = occupants.get(rtype, {}).get(i, []) if is_admin else []
+            occupied = (
+                len(occ_list)
+                if is_admin
+                else occupied_counts.get(rtype, {}).get(i, 0)
+            )
             is_blocked = i in blocked_slots
             free = (not is_blocked) and occupied < resource.capacity
             slots.append(
@@ -216,7 +254,7 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
                     capacity=resource.capacity,
                     blocked=is_blocked,
                     free=free,
-                    occupants=occ_list if is_admin else [],
+                    occupants=occ_list,
                 )
             )
         columns.append(

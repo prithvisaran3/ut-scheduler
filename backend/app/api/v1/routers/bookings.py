@@ -37,6 +37,8 @@ def create_booking(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except BookingConflictError as exc:
         raise booking_service.conflict_http(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/mine", response_model=list[BookingOut])
