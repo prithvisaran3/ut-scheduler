@@ -151,6 +151,7 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
     uptake_slots: set[int] = set()
 
     for booking in bookings:
+        own_booking = booking.patient_id == viewer.id
         admin_info = (
             OccupantOut(
                 booking_id=booking.id,
@@ -162,14 +163,16 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
         )
         for slot in booking.slots:
             rtype = slot.resource_type.value
-            # Every pathway block — including gap — occupies the Patient column.
+            # Patient/"You" column: admin sees everyone; patients see only themselves.
+            # Capacity columns (doctor/nmt/scan) always reflect all bookings.
             if is_admin and admin_info is not None:
                 patient_occupants.setdefault(slot.slot_index, []).append(admin_info)
-            else:
+            elif not is_admin and own_booking:
                 patient_booking_ids.setdefault(slot.slot_index, set()).add(booking.id)
 
             if rtype == "gap":
-                uptake_slots.add(slot.slot_index)
+                if is_admin or own_booking:
+                    uptake_slots.add(slot.slot_index)
                 continue
 
             occupied_counts.setdefault(rtype, {})
@@ -216,7 +219,7 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
                 ResourceColumnOut(
                     resource_id=None,
                     resource_type="patient",
-                    name="Patient",
+                    name="Patient" if is_admin else "You",
                     capacity=1,
                     slots=slots,
                 )

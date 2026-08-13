@@ -134,93 +134,103 @@ export function ScheduleGrid({
   return (
     <div
       ref={rootRef}
-      className="relative flex min-h-0 flex-1 overflow-auto bg-[var(--color-white)]"
+      data-grid-scroll
+      className="relative flex min-h-0 flex-1 overflow-auto overscroll-contain bg-[var(--color-white)]"
       onMouseUp={endDragGesture}
       onMouseLeave={endDragGesture}
     >
-      <TimeGutter />
+      {/* Single positioning context so overlay/now-line share GridCell slot origin
+          and scroll with the cells (not the page / scrollport). */}
       <div className="relative flex min-w-0 flex-1">
-        {columns.map((col, colIndex) => (
-          <div key={`${col.resource_type}-${colIndex}`} className="relative min-w-0 flex-1">
-            <div
-              className="flex items-center border-b border-[var(--color-grey-300)] px-1.5 text-[length:var(--text-11)] font-medium uppercase tracking-[0.06em] text-[var(--color-grey-700)]"
-              style={{ height: "var(--grid-header-height)" }}
-            >
-              {strings.grid[col.resource_type as keyof typeof strings.grid] ?? col.name}
-              {mode === "admin" && col.capacity > 0 && col.resource_type !== "patient" ? (
-                <span className="ml-auto text-[var(--color-grey-500)] normal-case tracking-normal">
-                  {Math.round(
-                    (col.slots.filter((s) => s.occupied > 0 || s.blocked).length /
-                      col.slots.length) *
-                      100,
-                  )}
-                  %
-                </span>
-              ) : null}
-            </div>
-            <div className="relative">
-              {col.slots.map((slot) => (
-                <GridCell
-                  key={slot.slot_index}
-                  slot={slot}
-                  resourceType={col.resource_type}
-                  mode={mode}
-                  showName={(() => {
-                    if (mode !== "admin" || slot.occupied <= 0 || !slot.occupants[0]?.patient_name) {
-                      return false;
+        <TimeGutter />
+        <div className="relative flex min-w-0 flex-1">
+          {columns.map((col, colIndex) => (
+            <div key={`${col.resource_type}-${colIndex}`} className="relative min-w-0 flex-1">
+              <div
+                className="flex items-center border-b border-[var(--color-grey-300)] px-1.5 text-[length:var(--text-11)] font-medium uppercase tracking-[0.06em] text-[var(--color-grey-700)]"
+                style={{ height: "var(--grid-header-height)" }}
+              >
+                {col.resource_type === "patient" && mode === "patient"
+                  ? strings.grid.you
+                  : (strings.grid[col.resource_type as keyof typeof strings.grid] ?? col.name)}
+                {mode === "admin" && col.capacity > 0 && col.resource_type !== "patient" ? (
+                  <span className="ml-auto text-[var(--color-grey-500)] normal-case tracking-normal">
+                    {Math.round(
+                      (col.slots.filter((s) => s.occupied > 0 || s.blocked).length /
+                        col.slots.length) *
+                        100,
+                    )}
+                    %
+                  </span>
+                ) : null}
+              </div>
+              <div className="relative">
+                {col.slots.map((slot) => (
+                  <GridCell
+                    key={slot.slot_index}
+                    slot={slot}
+                    resourceType={col.resource_type}
+                    mode={mode}
+                    showName={(() => {
+                      if (
+                        mode !== "admin" ||
+                        slot.occupied <= 0 ||
+                        !slot.occupants[0]?.patient_name
+                      ) {
+                        return false;
+                      }
+                      if (slot.is_uptake) return false;
+                      const prev = col.slots[slot.slot_index - 1];
+                      const bid = slot.occupants[0]?.booking_id;
+                      if (!prev || prev.occupied <= 0) return true;
+                      return prev.occupants[0]?.booking_id !== bid;
+                    })()}
+                    selected={
+                      !!drag &&
+                      drag.colIndex === colIndex &&
+                      slot.slot_index >= Math.min(drag.start, drag.end) &&
+                      slot.slot_index <= Math.max(drag.start, drag.end)
                     }
-                    if (slot.is_uptake) return false;
-                    const prev = col.slots[slot.slot_index - 1];
-                    const bid = slot.occupants[0]?.booking_id;
-                    if (!prev || prev.occupied <= 0) return true;
-                    return prev.occupants[0]?.booking_id !== bid;
-                  })()}
-                  selected={
-                    !!drag &&
-                    drag.colIndex === colIndex &&
-                    slot.slot_index >= Math.min(drag.start, drag.end) &&
-                    slot.slot_index <= Math.max(drag.start, drag.end)
-                  }
-                  onMouseDown={() => beginDrag(col.resource_type, slot.slot_index, colIndex)}
-                  onMouseEnter={() => extendDrag(slot.slot_index, colIndex)}
-                />
-              ))}
-              {drag && drag.colIndex === colIndex ? (
-                <DragMarquee
-                  resourceType={drag.resourceType}
-                  startSlot={drag.start}
-                  endSlot={drag.end}
-                  onBlock={() => applyDrag(true)}
-                  onUnblock={() => applyDrag(false)}
-                  onCancel={clearSelection}
-                />
-              ) : null}
+                    onMouseDown={() => beginDrag(col.resource_type, slot.slot_index, colIndex)}
+                    onMouseEnter={() => extendDrag(slot.slot_index, colIndex)}
+                  />
+                ))}
+                {drag && drag.colIndex === colIndex ? (
+                  <DragMarquee
+                    resourceType={drag.resourceType}
+                    startSlot={drag.start}
+                    endSlot={drag.end}
+                    onBlock={() => applyDrag(true)}
+                    onUnblock={() => applyDrag(false)}
+                    onCancel={clearSelection}
+                  />
+                ) : null}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
 
+        {/* Cell origin = below header. Slot N → top: N * 24px. Scrolls with content. */}
         <div
-          className="pointer-events-none absolute left-0 right-0"
+          className="pointer-events-none absolute bottom-0 left-0 right-0 z-20"
           style={{ top: "var(--grid-header-height)" }}
         >
-          <NowLine slotIndex={liveNowIdx} />
+          <div className="relative h-full" style={{ marginLeft: "var(--grid-gutter-width)" }}>
+            <NowLine slotIndex={liveNowIdx} />
+          </div>
+          {mode === "patient" ? (
+            <div className="absolute inset-0" style={{ left: "var(--grid-gutter-width)" }}>
+              <StencilSearchOverlay
+                result={searchResult}
+                animating={searching}
+                selectedStart={selectedStart}
+                onSelectStart={onSelectStart}
+                onAnimationComplete={onSearchAnimationComplete}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
-
-      {mode === "patient" ? (
-        <div
-          className="pointer-events-none absolute inset-0 z-20"
-          style={{ top: "var(--grid-header-height)" }}
-        >
-          <StencilSearchOverlay
-            result={searchResult}
-            animating={searching}
-            selectedStart={selectedStart}
-            onSelectStart={onSelectStart}
-            onAnimationComplete={onSearchAnimationComplete}
-          />
-        </div>
-      ) : null}
     </div>
   );
 }

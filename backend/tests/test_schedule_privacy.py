@@ -117,6 +117,14 @@ def test_patient_schedule_has_no_identity_or_patient_column(test_engine) -> None
                 "patient",
                 "scan",
             ]
+            you_col = next(c for c in patient_day.columns if c.resource_type == "patient")
+            assert you_col.name == "You"
+            # Other patient's booking must not appear in the You column.
+            assert all(s.occupied == 0 for s in you_col.slots)
+            # But capacity columns still show the resource as taken.
+            doctor = next(c for c in patient_day.columns if c.resource_type == "doctor")
+            assert any(s.occupied > 0 for s in doctor.slots)
+
             payload = patient_day.model_dump(mode="json")
             blob = str(payload)
             assert "Secret Patient" not in blob
@@ -124,11 +132,15 @@ def test_patient_schedule_has_no_identity_or_patient_column(test_engine) -> None
             for col in patient_day.columns:
                 for slot in col.slots:
                     assert slot.occupants == []
-                    if slot.occupied > 0:
-                        assert slot.free is False
+
+            # Own booking appears in You column for the booked patient.
+            own_day = build_day_matrix(db, day, booked)
+            own_you = next(c for c in own_day.columns if c.resource_type == "patient")
+            assert own_you.name == "You"
+            assert any(s.occupied > 0 for s in own_you.slots)
 
             admin_day = build_day_matrix(db, day, admin)
-            assert "patient" in [c.resource_type for c in admin_day.columns]
+            assert next(c for c in admin_day.columns if c.resource_type == "patient").name == "Patient"
             names = {
                 o.patient_name
                 for c in admin_day.columns

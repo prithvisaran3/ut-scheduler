@@ -116,6 +116,7 @@ export const strings = {
     gap: "Gap",
     scan: "Scan",
     patient: "Patient",
+    you: "You",
     unavailable: "Unavailable",
   },
   common: {
