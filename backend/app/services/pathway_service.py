@@ -109,8 +109,13 @@ def update_pathway(db: Session, pathway_id: UUID, data: PathwayUpdate) -> Pathwa
 
 
 def delete_pathway(db: Session, pathway_id: UUID) -> None:
+    from app.models.booking import Booking
+
     pathway = get_pathway(db, pathway_id)
     if pathway is None:
         raise LookupError("Pathway not found")
+    # Bookings reference pathways without ON DELETE CASCADE — remove them first.
+    for booking in db.scalars(select(Booking).where(Booking.pathway_id == pathway_id)).all():
+        db.delete(booking)
     db.delete(pathway)
     db.commit()
