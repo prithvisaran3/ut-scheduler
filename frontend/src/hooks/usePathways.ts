@@ -18,3 +18,13 @@ export function useCreatePathway() {
     },
   });
 }
+
+export function useDeletePathway() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => pathwayApi.deletePathway(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["pathways"] });
+    },
+  });
+}

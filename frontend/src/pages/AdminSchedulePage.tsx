@@ -6,7 +6,7 @@ import { StencilPreview } from "../components/pathway/StencilPreview";
 import { Button } from "../components/ui/Button";
 import { UserAvatarMenu } from "../components/ui/UserAvatarMenu";
 import { strings } from "../content/strings";
-import { usePathways } from "../hooks/usePathways";
+import { usePathways, useDeletePathway } from "../hooks/usePathways";
 import { usePatchSlots, useSchedule } from "../hooks/useSchedule";
 import { useLogout } from "../hooks/useAuth";
 import { useScheduleStore } from "../store/scheduleStore";
@@ -73,6 +73,7 @@ export function AdminSchedulePage() {
   const { selectedDate, setSelectedDate } = useScheduleStore();
   const schedule = useSchedule(selectedDate);
   const pathways = usePathways();
+  const deletePathway = useDeletePathway();
   const patchSlots = usePatchSlots();
   const [builderOpen, setBuilderOpen] = useState(false);
   const [exportNote, setExportNote] = useState<string | null>(null);
@@ -132,6 +133,7 @@ export function AdminSchedulePage() {
             <ScheduleGrid
               schedule={schedule.data}
               mode="admin"
+              selectedDate={selectedDate}
               onToggleSlots={({ resource_type, slot_indices, blocked }) => {
                 patchSlots.mutate({
                   date: selectedDate,
@@ -165,29 +167,50 @@ export function AdminSchedulePage() {
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-auto">
-            {pathways.data?.map((p) => (
+            {pathways.data?.length ? (
+              pathways.data.map((p) => (
+                <div
+                  key={p.id}
+                  className="group relative rounded-[var(--radius-xl)] border border-[var(--color-grey-200)] bg-[var(--color-white)] p-3.5 shadow-[var(--shadow-xs)]"
+                >
+                  <button
+                    type="button"
+                    className="absolute top-2.5 right-2.5 flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-grey-300)] opacity-0 transition group-hover:opacity-100 hover:bg-[var(--color-grey-100)] hover:text-[var(--color-salmon-700)]"
+                    aria-label={strings.admin.deletePathway}
+                    disabled={deletePathway.isPending}
+                    onClick={() => {
+                      if (!window.confirm(strings.admin.deletePathwayConfirm(p.name))) return;
+                      deletePathway.mutate(p.id);
+                    }}
+                  >
+                    ×
+                  </button>
+                  <div
+                    className="pr-7 font-semibold text-[var(--color-navy-900)]"
+                    style={{ fontSize: "var(--text-14)", lineHeight: 1.2 }}
+                  >
+                    {p.name}
+                  </div>
+                  <div
+                    className="mt-1 mb-2.5 text-[var(--color-grey-500)]"
+                    style={{ fontSize: "var(--text-12)", lineHeight: 1.4 }}
+                  >
+                    {strings.patient.blocksDuration(
+                      p.total_blocks,
+                      minutesToDurationLabel(p.total_minutes),
+                    )}
+                  </div>
+                  <StencilPreview pathway={p} />
+                </div>
+              ))
+            ) : (
               <div
-                key={p.id}
-                className="rounded-[var(--radius-xl)] border border-[var(--color-grey-200)] bg-[var(--color-white)] p-3.5 shadow-[var(--shadow-xs)]"
+                className="rounded-[var(--radius-xl)] border border-dashed border-[var(--color-grey-300)] bg-[var(--color-white)] px-3.5 py-6 text-center text-[var(--color-grey-500)]"
+                style={{ fontSize: "var(--text-13)", lineHeight: 1.4 }}
               >
-                <div
-                  className="font-semibold text-[var(--color-navy-900)]"
-                  style={{ fontSize: "var(--text-14)", lineHeight: 1.2 }}
-                >
-                  {p.name}
-                </div>
-                <div
-                  className="mt-1 mb-2.5 text-[var(--color-grey-500)]"
-                  style={{ fontSize: "var(--text-12)", lineHeight: 1.4 }}
-                >
-                  {strings.patient.blocksDuration(
-                    p.total_blocks,
-                    minutesToDurationLabel(p.total_minutes),
-                  )}
-                </div>
-                <StencilPreview pathway={p} />
+                {strings.admin.noPathwaysSidebar}
               </div>
-            ))}
+            )}
           </div>
 
           <Button className="mt-auto w-full" onClick={() => setBuilderOpen(true)}>

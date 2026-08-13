@@ -7,6 +7,7 @@ interface Props {
   endSlot: number;
   onBlock: () => void;
   onUnblock: () => void;
+  onCancel: () => void;
 }
 
 export function DragMarquee({
@@ -15,11 +16,14 @@ export function DragMarquee({
   endSlot,
   onBlock,
   onUnblock,
+  onCancel,
 }: Props) {
   const top = Math.min(startSlot, endSlot);
   const bottom = Math.max(startSlot, endSlot);
   const count = bottom - top + 1;
   const height = count * 32;
+  // Flip below the selection when near the header so the toolbar never covers column labels.
+  const toolbarBelow = top <= 2;
 
   return (
     <div
@@ -35,7 +39,9 @@ export function DragMarquee({
       }}
     >
       <div
-        className="pointer-events-auto absolute -left-2 -top-11 flex items-center gap-2.5 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--color-grey-200)] bg-[var(--color-white)] px-3 py-2 shadow-[var(--shadow-sm)]"
+        className={`pointer-events-auto absolute -left-2 flex items-center gap-2.5 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--color-grey-200)] bg-[var(--color-white)] px-3 py-2 shadow-[var(--shadow-sm)] ${
+          toolbarBelow ? "top-full mt-2" : "-top-11"
+        }`}
       >
         <span className="text-[length:var(--text-13)] font-medium text-[var(--color-navy-900)]">
           {strings.admin.slotsSelected(count)} · {resourceType}
@@ -55,8 +61,20 @@ export function DragMarquee({
         >
           {strings.admin.markAvailable}
         </button>
+        <button
+          type="button"
+          className="text-[length:var(--text-13)] font-medium text-[var(--color-grey-500)]"
+          onClick={onCancel}
+          aria-label={strings.admin.cancelSelection}
+        >
+          {strings.admin.cancelSelection}
+        </button>
       </div>
-      <div className="absolute left-3 top-full mt-1.5 text-[length:var(--text-11)] font-medium text-[var(--color-salmon-700)]">
+      <div
+        className={`absolute left-3 text-[length:var(--text-11)] font-medium text-[var(--color-salmon-700)] ${
+          toolbarBelow ? "bottom-full mb-1.5" : "top-full mt-1.5"
+        }`}
+      >
         {slotIndexToLabel(top)} — {slotIndexToLabel(bottom + 1)}
       </div>
     </div>

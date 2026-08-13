@@ -49,8 +49,6 @@ Health: http://localhost:8000/health
 |---------|---------------------------|--------------------|
 | Admin   | `admin@unithera.com`      | `Theranostics2026!` |
 | Patient | `prithvi@unithera.com`    | `Theranostics2026!` |
-| Admin   | `admin@utscheduler.com`   | `Theranostics2026!` |
-| Patient | `patient@utscheduler.com` | `Theranostics2026!` |
 
 ## Frontend setup
 
@@ -85,6 +83,8 @@ Doctor 90m → NMT 30m → GAP 60m → Scan 60m → Doctor 30m
 cd backend
 source .venv/bin/activate
 pip install -r requirements-dev.txt
+# Engine unit tests always run. DB concurrency test requires TEST_DATABASE_URL
+# (never falls back to production DATABASE_URL):
 pytest -q
 ```
 

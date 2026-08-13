@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ScheduleDay } from "../../types/schedule";
 import type { BookingSearchResponse } from "../../types/booking";
 import { strings } from "../../content/strings";
@@ -12,6 +12,7 @@ import { DAY_START_HOUR, SLOT_MINUTES } from "../../lib/scheduleConfig";
 interface Props {
   schedule: ScheduleDay;
   mode: "patient" | "admin";
+  selectedDate?: string;
   searchResult?: BookingSearchResponse | null;
   searching?: boolean;
   onToggleSlots?: (args: {
@@ -32,20 +33,22 @@ function currentSlotIndex(): number {
 export function ScheduleGrid({
   schedule,
   mode,
+  selectedDate,
   searchResult = null,
   searching = false,
   onToggleSlots,
 }: Props) {
   const columns = schedule.columns;
+  const rootRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{
     resourceType: "doctor" | "nmt" | "scan";
     start: number;
     end: number;
     colIndex: number;
   } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const nowIdx = useMemo(() => currentSlotIndex(), []);
-  // Recompute on an interval so the now-line tracks wall clock during a long session
   const [liveNowIdx, setLiveNowIdx] = useState(nowIdx);
   useEffect(() => {
     setLiveNowIdx(currentSlotIndex());
@@ -53,19 +56,64 @@ export function ScheduleGrid({
     return () => window.clearInterval(id);
   }, []);
 
-  const onMouseUp = useCallback(() => {
-    /* keep marquee until action */
+  useEffect(() => {
+    if (!isDragging) return;
+    const onUp = () => setIsDragging(false);
+    window.addEventListener("mouseup", onUp);
+    return () => window.removeEventListener("mouseup", onUp);
+  }, [isDragging]);
+
+  // Stale selection must not survive a day change.
+  useEffect(() => {
+    setDrag(null);
+    setIsDragging(false);
+  }, [selectedDate]);
+
+  const clearSelection = useCallback(() => {
+    setDrag(null);
+    setIsDragging(false);
   }, []);
+
+  useEffect(() => {
+    if (mode !== "admin" || !drag) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") clearSelection();
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const root = rootRef.current;
+      if (!root) return;
+      const target = e.target as Node | null;
+      if (target && root.contains(target)) {
+        // Clicks on the marquee toolbar stay inside root — keep selection.
+        return;
+      }
+      clearSelection();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    // Capture so we see outside clicks before they bubble elsewhere.
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [mode, drag, clearSelection]);
 
   const beginDrag = (resourceType: string, slotIndex: number, colIndex: number) => {
     if (mode !== "admin") return;
     if (resourceType !== "doctor" && resourceType !== "nmt" && resourceType !== "scan") return;
+    setIsDragging(true);
     setDrag({ resourceType, start: slotIndex, end: slotIndex, colIndex });
   };
 
   const extendDrag = (slotIndex: number, colIndex: number) => {
-    if (!drag || drag.colIndex !== colIndex) return;
+    if (!isDragging || !drag || drag.colIndex !== colIndex) return;
     setDrag({ ...drag, end: slotIndex });
+  };
+
+  const endDragGesture = () => {
+    setIsDragging(false);
   };
 
   const applyDrag = (blocked: boolean) => {
@@ -74,14 +122,15 @@ export function ScheduleGrid({
     const b = Math.max(drag.start, drag.end);
     const indices = Array.from({ length: b - a + 1 }, (_, i) => a + i);
     onToggleSlots({ resource_type: drag.resourceType, slot_indices: indices, blocked });
-    setDrag(null);
+    clearSelection();
   };
 
   return (
     <div
+      ref={rootRef}
       className="relative flex min-h-0 flex-1 overflow-auto bg-[var(--color-white)]"
-      onMouseUp={onMouseUp}
-      onMouseLeave={() => undefined}
+      onMouseUp={endDragGesture}
+      onMouseLeave={endDragGesture}
     >
       <TimeGutter />
       <div className="relative flex min-w-0 flex-1">
@@ -126,6 +175,7 @@ export function ScheduleGrid({
                   endSlot={drag.end}
                   onBlock={() => applyDrag(true)}
                   onUnblock={() => applyDrag(false)}
+                  onCancel={clearSelection}
                 />
               ) : null}
             </div>

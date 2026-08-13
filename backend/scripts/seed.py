@@ -1,4 +1,4 @@
-"""Seed demo users, resources, pathways, and today's schedule occupancy.
+"""Seed demo users, resources, and today's availability blocks — no pathways.
 
 Run from backend/:  python -m scripts.seed
 """
@@ -12,20 +12,18 @@ from pathlib import Path
 # Allow `python scripts/seed.py` from backend/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
-from app.core.schedule_config import PATHWAY_1_STEPS
 from app.core.security import hash_password
 from app.db.session import SessionLocal
 from app.models.availability_block import AvailabilityBlock
-from app.models.booking import Booking, BookingSlot, BookingStatus
-from app.models.pathway import Pathway, PathwayStep, StepResourceType
+from app.models.booking import Booking, BookingSlot
+from app.models.pathway import Pathway, PathwayStep
 from app.models.resource import Resource, ResourceType
 from app.models.user import User, UserRole
-from app.services.scheduling_engine import build_requirement_array, expand_booking_slots
 
-ADMIN_EMAIL = "admin@utscheduler.com"
-PATIENT_EMAIL = "patient@utscheduler.com"
+ADMIN_EMAIL = "admin@unithera.com"
+PATIENT_EMAIL = "prithvi@unithera.com"
 DEMO_PASSWORD = "Theranostics2026!"
 
 
@@ -40,57 +38,6 @@ def _clear(db) -> None:
     db.commit()
 
 
-def _add_pathway(db, name: str, steps: list[dict], created_by) -> Pathway:
-    pathway = Pathway(name=name, created_by=created_by)
-    for step in steps:
-        pathway.steps.append(
-            PathwayStep(
-                resource_type=StepResourceType(step["resource_type"]),
-                duration_minutes=step["duration_minutes"],
-                block_count=step["block_count"],
-                sequence_order=step["sequence_order"],
-            )
-        )
-    db.add(pathway)
-    db.flush()
-    return pathway
-
-
-def _book(
-    db,
-    *,
-    patient: User,
-    pathway: Pathway,
-    day: date,
-    start_slot: int,
-    resources_by_type: dict[str, Resource],
-) -> Booking:
-    requirement = build_requirement_array(pathway.steps)
-    booking = Booking(
-        patient_id=patient.id,
-        pathway_id=pathway.id,
-        date=day,
-        start_slot=start_slot,
-        status=BookingStatus.confirmed,
-    )
-    for slot_index, rtype in expand_booking_slots(requirement, start_slot):
-        if rtype is None:
-            booking.slots.append(
-                BookingSlot(resource_id=None, resource_type=StepResourceType.gap, slot_index=slot_index)
-            )
-        else:
-            res = resources_by_type[rtype]
-            booking.slots.append(
-                BookingSlot(
-                    resource_id=res.id,
-                    resource_type=StepResourceType(rtype),
-                    slot_index=slot_index,
-                )
-            )
-    db.add(booking)
-    return booking
-
-
 def seed() -> None:
     db = SessionLocal()
     try:
@@ -100,22 +47,15 @@ def seed() -> None:
             email=ADMIN_EMAIL,
             password_hash=hash_password(DEMO_PASSWORD),
             role=UserRole.admin,
-            full_name="Alex Rivera",
+            full_name="Prithvi Admin",
         )
         patient = User(
             email=PATIENT_EMAIL,
             password_hash=hash_password(DEMO_PASSWORD),
             role=UserRole.patient,
-            full_name="Jordan Lee",
+            full_name="Prithvi Saran",
         )
-        # Extra patient for afternoon demo bookings
-        other = User(
-            email="k.whitfield@utcare.org",
-            password_hash=hash_password(DEMO_PASSWORD),
-            role=UserRole.patient,
-            full_name="K. Whitfield",
-        )
-        db.add_all([admin, patient, other])
+        db.add_all([admin, patient])
         db.flush()
 
         doctor = Resource(type=ResourceType.doctor, name="Doctor", capacity=1)
@@ -123,81 +63,29 @@ def seed() -> None:
         scan = Resource(type=ResourceType.scan, name="Scan", capacity=1)
         db.add_all([doctor, nmt, scan])
         db.flush()
-        resources_by_type = {"doctor": doctor, "nmt": nmt, "scan": scan}
 
-        # Pathway 1 — brief ground truth (9 blocks / 4h 30m)
-        p1 = _add_pathway(db, "Pathway 1 · Lu-177 standard", PATHWAY_1_STEPS, admin.id)
-
-        # Pathway 2 — extended uptake
-        p2 = _add_pathway(
-            db,
-            "Pathway 2 · Extended uptake",
-            [
-                {"resource_type": "doctor", "duration_minutes": 60, "block_count": 2, "sequence_order": 0},
-                {"resource_type": "nmt", "duration_minutes": 30, "block_count": 1, "sequence_order": 1},
-                {"resource_type": "gap", "duration_minutes": 120, "block_count": 4, "sequence_order": 2},
-                {"resource_type": "scan", "duration_minutes": 60, "block_count": 2, "sequence_order": 3},
-                {"resource_type": "doctor", "duration_minutes": 30, "block_count": 1, "sequence_order": 4},
-            ],
-            admin.id,
-        )
-
-        # Pathway 3 — same-day imaging (shorter)
-        p3 = _add_pathway(
-            db,
-            "Pathway 3 · Same-day imaging",
-            [
-                {"resource_type": "doctor", "duration_minutes": 30, "block_count": 1, "sequence_order": 0},
-                {"resource_type": "nmt", "duration_minutes": 30, "block_count": 1, "sequence_order": 1},
-                {"resource_type": "gap", "duration_minutes": 30, "block_count": 1, "sequence_order": 2},
-                {"resource_type": "scan", "duration_minutes": 60, "block_count": 2, "sequence_order": 3},
-                {"resource_type": "doctor", "duration_minutes": 30, "block_count": 1, "sequence_order": 4},
-            ],
-            admin.id,
-        )
-        _ = (p2, p3)
-
-        # Always relative to the calendar day this script runs — never hardcode a date.
         today = date.today()
 
-        # Early-morning doctor consult (08:00–09:00) via a short same-day pathway start
-        _book(db, patient=other, pathway=p3, day=today, start_slot=0, resources_by_type=resources_by_type)
+        # Morning doctor blocks (08:00–10:00 → slots 0–3)
+        # Midday doctor cluster (11:00–13:00 → slots 6–9)
+        # Late-afternoon doctor (16:00–17:00 → slots 16–17)
+        doctor_slots = [0, 1, 2, 3, 6, 7, 8, 9, 16, 17]
+        # NMT dose-prep mid-morning (09:00–10:30 → slots 2–4) + mid-afternoon (14:00–15:00 → 12–13)
+        nmt_slots = [2, 3, 4, 12, 13]
+        # Scan late morning (10:00–11:00 → 4–5) + afternoon (15:00–16:00 → 14–15)
+        scan_slots = [4, 5, 14, 15]
 
-        # NMT dose-prep feel: block NMT mid-morning if not covered — slots 2-3 (09:00-10:00)
-        # Actually the p3 booking already uses NMT at slot 1. Add admin blocks for a
-        # mid-morning cluster on doctor (slots 6-9 → 11:00-13:00) to force search animation.
-        for idx in (6, 7, 8, 9):
+        for idx in doctor_slots:
             db.add(
                 AvailabilityBlock(
                     resource_id=doctor.id,
                     date=today,
                     slot_index=idx,
                     created_by=admin.id,
-                    reason="admin_block",
+                    reason="clinic_block",
                 )
             )
-
-        # Afternoon booking starting 14:00 (slot 12) with pathway 3 for other patient
-        # — may conflict; use tomorrow's patient slot instead for afternoon density:
-        afternoon_patient = User(
-            email="demo.afternoon@utscheduler.com",
-            password_hash=hash_password(DEMO_PASSWORD),
-            role=UserRole.patient,
-            full_name="Sam Ortiz",
-        )
-        db.add(afternoon_patient)
-        db.flush()
-        _book(
-            db,
-            patient=afternoon_patient,
-            pathway=p3,
-            day=today,
-            start_slot=14,  # 15:00
-            resources_by_type=resources_by_type,
-        )
-
-        # Light NMT block late morning
-        for idx in (4, 5):
+        for idx in nmt_slots:
             db.add(
                 AvailabilityBlock(
                     resource_id=nmt.id,
@@ -207,13 +95,24 @@ def seed() -> None:
                     reason="dose_prep",
                 )
             )
+        for idx in scan_slots:
+            db.add(
+                AvailabilityBlock(
+                    resource_id=scan.id,
+                    date=today,
+                    slot_index=idx,
+                    created_by=admin.id,
+                    reason="camera_maintenance",
+                )
+            )
 
         db.commit()
 
-        # Verify pathway 1 search finds a fit
-        from app.services.booking_service import search_booking
-
-        result = search_booking(db, p1.id, today)
+        n_users = db.scalar(select(func.count()).select_from(User)) or 0
+        n_resources = db.scalar(select(func.count()).select_from(Resource)) or 0
+        n_pathways = db.scalar(select(func.count()).select_from(Pathway)) or 0
+        n_bookings = db.scalar(select(func.count()).select_from(Booking)) or 0
+        n_blocks = db.scalar(select(func.count()).select_from(AvailabilityBlock)) or 0
 
         print("=" * 60)
         print("UT Scheduler seed complete")
@@ -221,8 +120,8 @@ def seed() -> None:
         print(f"Admin:   {ADMIN_EMAIL} / {DEMO_PASSWORD}")
         print(f"Patient: {PATIENT_EMAIL} / {DEMO_PASSWORD}")
         print(f"Today:   {today.isoformat()}")
-        print(f"Pathway 1 earliest start slot: {result.earliest_start_slot} "
-              f"(end {result.end_slot}), rejected={len(result.rejected_attempts)}")
+        print(f"users={n_users} resources={n_resources} pathways={n_pathways} "
+              f"bookings={n_bookings} availability_blocks={n_blocks}")
         print("=" * 60)
     finally:
         db.close()

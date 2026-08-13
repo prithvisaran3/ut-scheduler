@@ -30,13 +30,22 @@ export function PatientBookingPage() {
   const [landed, setLanded] = useState(false);
 
   useEffect(() => {
-    if (pathways.data?.length && !selectedPathwayId) {
+    if (!pathways.data) return;
+    if (pathways.data.length === 0) {
+      if (selectedPathwayId) setSelectedPathwayId(null);
+      return;
+    }
+    if (!selectedPathwayId || !pathways.data.some((p) => p.id === selectedPathwayId)) {
       setSelectedPathwayId(pathways.data[0].id);
     }
   }, [pathways.data, selectedPathwayId, setSelectedPathwayId]);
 
   useEffect(() => {
-    if (!selectedPathwayId) return;
+    if (!selectedPathwayId) {
+      setLanded(false);
+      setResult(null);
+      return;
+    }
     setLanded(false);
     setResult(null);
     search.mutate(
@@ -130,11 +139,13 @@ export function PatientBookingPage() {
       >
         <div>
           <div className="text-[length:var(--text-30)] font-semibold tracking-[-0.01em] text-[var(--color-ink)]">
-            {result?.earliest_start_slot != null && result.end_slot != null
-              ? `${strings.patient.earliestAvailable} — ${slotRangeLabel(result.earliest_start_slot, result.end_slot)}`
-              : noFit
-                ? strings.empty.title
-                : strings.patient.searching}
+            {!selectedPathwayId
+              ? strings.patient.noPathwaysYet
+              : result?.earliest_start_slot != null && result.end_slot != null
+                ? `${strings.patient.earliestAvailable} — ${slotRangeLabel(result.earliest_start_slot, result.end_slot)}`
+                : noFit
+                  ? strings.empty.title
+                  : strings.patient.searching}
           </div>
           {result && !noFit ? (
             <div className="text-[length:var(--text-14)] text-[var(--color-grey-500)]">
