@@ -10,9 +10,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.schedule_config import (
+    ADMIN_DISPLAY_COLUMNS,
     DAY_END_HOUR,
     DAY_START_HOUR,
-    DISPLAY_COLUMNS,
+    PATIENT_DISPLAY_COLUMNS,
     RESOURCE_TYPES,
     SLOT_MINUTES,
     SLOTS_PER_DAY,
@@ -145,9 +146,10 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
     # Patients get counts only — never booking_id / patient_name / pathway_name.
     occupants: dict[str, dict[int, list[OccupantOut]]] = {t: {} for t in RESOURCE_TYPES}
     occupied_counts: dict[str, dict[int, int]] = {t: {} for t in RESOURCE_TYPES}
-    # Patient column: continuous across the full booking span, including gaps.
+    # Admin Patient column: continuous across every booking (incl. gaps).
     patient_occupants: dict[int, list[OccupantOut]] = {}
-    patient_booking_ids: dict[int, set[UUID]] = {}
+    # Patient GAP column: only this viewer's own gap slots (privacy + noise).
+    own_gap_slots: dict[int, int] = {}
     uptake_slots: set[int] = set()
 
     for booking in bookings:
@@ -163,16 +165,16 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
         )
         for slot in booking.slots:
             rtype = slot.resource_type.value
-            # Patient/"You" column: admin sees everyone; patients see only themselves.
-            # Capacity columns (doctor/nmt/scan) always reflect all bookings.
+
             if is_admin and admin_info is not None:
+                # Continuous Patient column for admin (all steps including gap).
                 patient_occupants.setdefault(slot.slot_index, []).append(admin_info)
-            elif not is_admin and own_booking:
-                patient_booking_ids.setdefault(slot.slot_index, set()).add(booking.id)
 
             if rtype == "gap":
-                if is_admin or own_booking:
+                if is_admin:
                     uptake_slots.add(slot.slot_index)
+                elif own_booking:
+                    own_gap_slots[slot.slot_index] = own_gap_slots.get(slot.slot_index, 0) + 1
                 continue
 
             occupied_counts.setdefault(rtype, {})
@@ -185,25 +187,20 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
                 )
 
     columns: list[ResourceColumnOut] = []
+    column_types = ADMIN_DISPLAY_COLUMNS if is_admin else PATIENT_DISPLAY_COLUMNS
 
-    # Spreadsheet order for both roles: Doctor | NMT | Patient | Scan
-    for rtype in DISPLAY_COLUMNS:
+    for rtype in column_types:
         if rtype == "patient":
             slots = []
             for i in range(SLOTS_PER_DAY):
-                if is_admin:
-                    merged = patient_occupants.get(i, [])
-                    seen: set[UUID] = set()
-                    unique: list[OccupantOut] = []
-                    for o in merged:
-                        if o.booking_id not in seen:
-                            seen.add(o.booking_id)
-                            unique.append(o)
-                    occupied = len(unique)
-                    occ_list = unique
-                else:
-                    occupied = len(patient_booking_ids.get(i, set()))
-                    occ_list = []
+                merged = patient_occupants.get(i, [])
+                seen: set[UUID] = set()
+                unique: list[OccupantOut] = []
+                for o in merged:
+                    if o.booking_id not in seen:
+                        seen.add(o.booking_id)
+                        unique.append(o)
+                occupied = len(unique)
                 slots.append(
                     ResourceSlotOut(
                         slot_index=i,
@@ -211,7 +208,7 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
                         capacity=1,
                         blocked=False,
                         free=occupied == 0,
-                        occupants=occ_list,
+                        occupants=unique,
                         is_uptake=occupied > 0 and i in uptake_slots,
                     )
                 )
@@ -219,8 +216,35 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
                 ResourceColumnOut(
                     resource_id=None,
                     resource_type="patient",
-                    name="Patient" if is_admin else "You",
+                    name="Patient",
                     capacity=1,
+                    slots=slots,
+                )
+            )
+            continue
+
+        if rtype == "gap":
+            # Patient view only — own gaps / prospective uptake, never others'.
+            slots = []
+            for i in range(SLOTS_PER_DAY):
+                occ = own_gap_slots.get(i, 0)
+                slots.append(
+                    ResourceSlotOut(
+                        slot_index=i,
+                        occupied=occ,
+                        capacity=999,
+                        blocked=False,
+                        free=occ == 0,
+                        occupants=[],
+                        is_uptake=occ > 0,
+                    )
+                )
+            columns.append(
+                ResourceColumnOut(
+                    resource_id=None,
+                    resource_type="gap",
+                    name="Gap",
+                    capacity=999,
                     slots=slots,
                 )
             )
@@ -283,6 +307,23 @@ def toggle_slots(
     resource = resources_by_type.get(resource_type.value)
     if resource is None:
         raise ValueError(f"No resource configured for type {resource_type.value}")
+
+    # Prevent admin blocks on slots that already have a confirmed booking —
+    # blocking on top of occupancy confuses the grid without freeing capacity.
+    if blocked:
+        used, _cap, _ = build_used_matrix(db, day)
+        ri = RESOURCE_INDEX.get(resource_type.value)
+        if ri is not None:
+            conflicted = [
+                idx
+                for idx in slot_indices
+                if 0 <= idx < SLOTS_PER_DAY and int(used[ri, idx]) > 0
+            ]
+            if conflicted:
+                raise ValueError(
+                    "Cannot block slots that already have a booking. "
+                    f"Occupied slot indices: {conflicted}"
+                )
 
     changed = 0
     existing = {

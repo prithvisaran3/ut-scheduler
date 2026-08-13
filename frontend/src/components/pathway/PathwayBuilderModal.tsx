@@ -23,7 +23,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { strings } from "../../content/strings";
-import { SLOT_MINUTES, STEP_TYPES, type StepType } from "../../lib/scheduleConfig";
+import { SLOT_MINUTES, DAY_MINUTES, DAY_START_HOUR, DAY_END_HOUR, STEP_TYPES, type StepType } from "../../lib/scheduleConfig";
 import { minutesToDurationLabel } from "../../lib/time";
 import { useCreatePathway } from "../../hooks/usePathways";
 import type { Pathway } from "../../types/pathway";
@@ -482,6 +482,14 @@ export function PathwayBuilderModal({ open, onClose, pathway = null }: Props) {
                     totals.blocks,
                     minutesToDurationLabel(totals.minutes || 0),
                   )}
+                  {totals.minutes > DAY_MINUTES ? (
+                    <div
+                      className="mt-1 max-w-[280px] text-[var(--color-salmon-700)]"
+                      style={{ fontSize: "var(--text-12)" }}
+                    >
+                      {strings.pathwayBuilder.tooLong(DAY_END_HOUR - DAY_START_HOUR)}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex gap-2.5">
                   <button

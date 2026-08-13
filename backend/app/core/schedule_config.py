@@ -14,14 +14,18 @@ SLOTS_PER_DAY: int = ((DAY_END_HOUR - DAY_START_HOUR) * 60) // SLOT_MINUTES  # 3
 # Capacity-bearing resources only. GAP is uptake wait — not a capacity row.
 RESOURCE_TYPES: list[str] = ["doctor", "nmt", "scan"]
 
-# Display columns match the spreadsheet: Doctor | NMT | Patient | Scan.
-# Patient is display-only (not an engine capacity row).
-DISPLAY_COLUMNS: list[str] = ["doctor", "nmt", "patient", "scan"]
+# Admin grid matches the spreadsheet: Doctor | NMT | Patient | Scan.
+ADMIN_DISPLAY_COLUMNS: list[str] = ["doctor", "nmt", "patient", "scan"]
+# Patient grid: Doctor | NMT | GAP | Scan — no Patient column (privacy).
+PATIENT_DISPLAY_COLUMNS: list[str] = ["doctor", "nmt", "gap", "scan"]
 
 # Pathway step types include gap (non-capacity, stored on booking slots).
 STEP_TYPES: list[str] = ["doctor", "nmt", "gap", "scan"]
 
 DEFAULT_CAPACITY: int = 1
+
+# Usable day length in minutes (for builder warnings).
+DAY_MINUTES: int = (DAY_END_HOUR - DAY_START_HOUR) * 60
 
 # Pathway 1 ground truth — spreadsheet Sheet4 (15-min slots).
 # Doctor 45 | NMT 30 | GAP 60 | Scan 60 | Doctor 30 → 15 blocks / 225 min.

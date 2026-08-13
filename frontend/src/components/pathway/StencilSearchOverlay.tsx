@@ -26,7 +26,9 @@ import { GRID_ROW_HEIGHT_PX, SLOTS_PER_DAY } from "../../lib/scheduleConfig";
  */
 const ROW_H = GRID_ROW_HEIGHT_PX;
 
-/** Spreadsheet columns under the time gutter: Doctor | NMT | Patient | Scan */
+/** Spreadsheet columns under the time gutter.
+ * Admin: Doctor | NMT | Patient | Scan
+ * Patient: Doctor | NMT | GAP | Scan (gap shares the third 25% lane) */
 const COL_LEFT: Record<string, string> = {
   doctor: "0%",
   nmt: "25%",
@@ -43,19 +45,13 @@ interface FootprintRun {
   endSlotExclusive: number;
 }
 
-/** Merge a pathway's slots into contiguous per-column runs. */
+/** Merge a pathway's slots into contiguous per-column runs (actual types only). */
 export function buildFootprintRuns(slots: BookingSlot[]): FootprintRun[] {
   const byType = new Map<string, number[]>();
   for (const slot of slots) {
-    const displayType = slot.resource_type === "gap" ? "patient" : slot.resource_type;
-    const list = byType.get(displayType) ?? [];
+    const list = byType.get(slot.resource_type) ?? [];
     list.push(slot.slot_index);
-    byType.set(displayType, list);
-    if (displayType !== "patient") {
-      const patientList = byType.get("patient") ?? [];
-      patientList.push(slot.slot_index);
-      byType.set("patient", patientList);
-    }
+    byType.set(slot.resource_type, list);
   }
 
   const runs: FootprintRun[] = [];

@@ -11,6 +11,8 @@ interface Props {
   selected?: boolean;
   onMouseDown?: () => void;
   onMouseEnter?: () => void;
+  /** Patient: notify when clicking an occupied/blocked capacity cell. */
+  onReservedClick?: () => void;
 }
 
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES;
@@ -23,15 +25,16 @@ export function GridCell({
   selected,
   onMouseDown,
   onMouseEnter,
+  onReservedClick,
 }: Props) {
   const isPatientCol = resourceType === "patient";
+  const isGapCol = resourceType === "gap";
+  const softCol = isPatientCol || isGapCol;
   const occupied = slot.occupied > 0;
-  const blocked = slot.blocked && !isPatientCol;
-  const isUptake = isPatientCol && !!slot.is_uptake && occupied;
-  const unavailableHint =
-    mode === "patient" && !isPatientCol && (occupied || blocked)
-      ? strings.grid.unavailable
-      : undefined;
+  const blocked = slot.blocked && !softCol;
+  const isUptake = softCol && !!slot.is_uptake && occupied;
+  const reserved =
+    mode === "patient" && !softCol && (occupied || blocked);
 
   const hourBoundary = slot.slot_index % SLOTS_PER_HOUR === 0;
 
@@ -61,15 +64,17 @@ export function GridCell({
         borderTop: hourBoundary
           ? "1px solid var(--grid-hour-border)"
           : "1px solid var(--grid-quarter-border)",
-        cursor: isPatientCol ? "default" : "crosshair",
+        cursor: softCol ? "default" : mode === "patient" ? "pointer" : "crosshair",
         opacity: isUptake ? 0.85 : 1,
       }}
-      title={unavailableHint}
-      aria-label={unavailableHint}
+      aria-label={reserved ? strings.grid.unavailable : undefined}
       data-blocked={blocked ? "true" : undefined}
       data-uptake={isUptake ? "true" : undefined}
-      onMouseDown={isPatientCol ? undefined : onMouseDown}
-      onMouseEnter={isPatientCol ? undefined : onMouseEnter}
+      onMouseDown={softCol || mode === "patient" ? undefined : onMouseDown}
+      onMouseEnter={softCol || mode === "patient" ? undefined : onMouseEnter}
+      onClick={() => {
+        if (reserved) onReservedClick?.();
+      }}
     >
       {name ? (
         <span className="absolute inset-x-0.5 top-0.5 truncate text-[length:var(--text-10)] leading-none text-[var(--color-white)]">

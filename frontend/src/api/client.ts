@@ -33,6 +33,9 @@ function detailFromBody(body: unknown, fallback: string): string {
         )
         .join("; ");
     }
+    if (typeof detail === "object" && detail && "message" in detail) {
+      return String((detail as { message: unknown }).message);
+    }
     if (detail != null) return JSON.stringify(detail);
   }
   return fallback;
@@ -77,7 +80,7 @@ export async function apiFetch<T>(
     }
 
     if (res.status === 401) {
-      throw new ApiError(401, "Invalid email or password", body);
+      throw new ApiError(401, "Your session expired. Please sign in again.", body);
     }
     if (res.status === 403) {
       throw new ApiError(403, detailFromBody(body, "You do not have access to do that."), body);

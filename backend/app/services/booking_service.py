@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.schedule_config import DAY_START_HOUR, SLOT_MINUTES
 from app.models.availability_block import AvailabilityBlock
 from app.models.booking import Booking, BookingSlot, BookingStatus
 from app.models.pathway import Pathway, StepResourceType
@@ -23,10 +24,73 @@ from app.schemas.booking import (
 from app.services.pathway_service import get_pathway
 from app.services.schedule_service import build_used_matrix, get_resources_by_type
 from app.services.scheduling_engine import (
+    FitResult,
     build_requirement_array,
     expand_booking_slots,
     find_earliest_fit,
 )
+
+
+def _is_weekend(day: date) -> bool:
+    return day.weekday() >= 5  # Saturday / Sunday
+
+
+def _min_bookable_start(day: date) -> int | None:
+    """Exclusive lower bound for start slots that are still in the future.
+
+    Returns None when the whole day is bookable (future dates).
+    Returns SLOTS_PER_DAY (or higher) when the day is fully past.
+    Past slots for *today* are excluded — once a slot's start time has begun,
+    it is no longer offered.
+    """
+    today = date.today()
+    if day > today:
+        return None
+    if day < today:
+        from app.core.schedule_config import SLOTS_PER_DAY
+
+        return SLOTS_PER_DAY
+    now = datetime.now()
+    minutes = now.hour * 60 + now.minute
+    day_start = DAY_START_HOUR * 60
+    if minutes < day_start:
+        return None
+    # Floor index of the in-progress slot; keep starts strictly after it.
+    return (minutes - day_start) // SLOT_MINUTES
+
+
+def _apply_temporal_filters(day: date, fit: FitResult) -> FitResult:
+    """Drop weekend / past starts. Empty result (not error) when nothing remains."""
+    if _is_weekend(day):
+        return FitResult(
+            earliest_start_slot=None,
+            end_slot=None,
+            rejected_attempts=[],
+            requirement_length=fit.requirement_length,
+            feasible_starts=[],
+        )
+
+    min_start = _min_bookable_start(day)
+    if min_start is None:
+        return fit
+
+    feasible = [s for s in fit.feasible_starts if s > min_start]
+    if not feasible:
+        return FitResult(
+            earliest_start_slot=None,
+            end_slot=None,
+            rejected_attempts=fit.rejected_attempts,
+            requirement_length=fit.requirement_length,
+            feasible_starts=[],
+        )
+    earliest = feasible[0]
+    return FitResult(
+        earliest_start_slot=earliest,
+        end_slot=earliest + fit.requirement_length,
+        rejected_attempts=fit.rejected_attempts,
+        requirement_length=fit.requirement_length,
+        feasible_starts=feasible,
+    )
 
 
 class BookingConflictError(Exception):
@@ -83,7 +147,7 @@ def search_booking(db: Session, pathway_id: UUID, day: date) -> BookingSearchRes
 
     used, capacity, resources_by_type = build_used_matrix(db, day)
     requirement = build_requirement_array(pathway.steps)
-    fit = find_earliest_fit(used, capacity, requirement)
+    fit = _apply_temporal_filters(day, find_earliest_fit(used, capacity, requirement))
     return _search_response(pathway, day, fit, requirement, resources_by_type)
 
 
@@ -114,6 +178,13 @@ def confirm_booking(db: Session, patient: User, data: BookingCreateRequest) -> B
     if pathway is None:
         raise LookupError("Pathway not found")
 
+    if _is_weekend(data.date):
+        raise ValueError("Clinic is closed on weekends — please choose a weekday.")
+
+    min_start = _min_bookable_start(data.date)
+    if min_start is not None and data.start_slot <= min_start:
+        raise ValueError("That start time is already in the past. Choose a later slot.")
+
     # Serialize concurrent confirms by locking capacity resources first.
     # (Locking only bookings/blocks is a no-op on an empty day.)
     db.scalars(select(Resource).order_by(Resource.type).with_for_update()).all()
@@ -132,7 +203,9 @@ def confirm_booking(db: Session, patient: User, data: BookingCreateRequest) -> B
     requirement = build_requirement_array(pathway.steps)
 
     if not _fits_at(used, capacity, requirement, data.start_slot):
-        fit = find_earliest_fit(used, capacity, requirement)
+        fit = _apply_temporal_filters(
+            data.date, find_earliest_fit(used, capacity, requirement)
+        )
         suggestion = _search_response(pathway, data.date, fit, requirement, resources_by_type)
         raise BookingConflictError(
             "Selected start slot is no longer available",

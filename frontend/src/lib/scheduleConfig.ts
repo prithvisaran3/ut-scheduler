@@ -13,8 +13,10 @@ export const SLOTS_PER_DAY = ((DAY_END_HOUR - DAY_START_HOUR) * 60) / SLOT_MINUT
 export const RESOURCE_TYPES = ["doctor", "nmt", "scan"] as const;
 export type CapacityResourceType = (typeof RESOURCE_TYPES)[number];
 
-/** Spreadsheet grid order: Doctor | NMT | Patient | Scan (no Gap column). */
-export const DISPLAY_COLUMNS = ["doctor", "nmt", "patient", "scan"] as const;
+/** Spreadsheet admin grid: Doctor | NMT | Patient | Scan */
+export const ADMIN_DISPLAY_COLUMNS = ["doctor", "nmt", "patient", "scan"] as const;
+/** Patient grid: Doctor | NMT | GAP | Scan (no Patient column). */
+export const PATIENT_DISPLAY_COLUMNS = ["doctor", "nmt", "gap", "scan"] as const;
 
 export const STEP_TYPES = ["doctor", "nmt", "gap", "scan"] as const;
 export type StepType = (typeof STEP_TYPES)[number];
@@ -26,3 +28,5 @@ export const GRID_ROW_HEIGHT_PX = 24;
 
 export const PATHWAY_1_TOTAL_BLOCKS = 15;
 export const PATHWAY_1_TOTAL_MINUTES = 225;
+
+export const DAY_MINUTES = (DAY_END_HOUR - DAY_START_HOUR) * 60;

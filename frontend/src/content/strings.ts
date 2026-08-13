@@ -58,6 +58,25 @@ export const strings = {
     selectedPlacement: "Selected placement",
     noTimesToday: "No openings on this day",
     dragHint: "Drag the pathway on the grid, or pick a time",
+    weekendClosed: "Clinic is closed on weekends — pick a weekday to book.",
+    pathwayGone: "That pathway is no longer available. Choose another.",
+    slotUnavailable: "That time is unavailable",
+    bookedSuccess: (range: string) => `Booked ${range}`,
+    loadError: "Couldn’t load the schedule.",
+    retry: "Retry",
+    wakingUp: "Server may be waking up — hang tight, then retry.",
+  },
+  confirmModal: {
+    title: "Confirm your appointment",
+    pathwayLine: (name: string, duration: string) => `${name} · ${duration}`,
+    when: "When",
+    steps: "Steps",
+    back: "Back",
+    confirm: "Confirm booking",
+    confirming: "Booking…",
+    conflict: "That slot was just taken. Try the suggested time below.",
+    jumpToSuggestion: (time: string) => `Jump to ${time}`,
+    noSuggestion: "No other openings remain on this day — try another date.",
   },
   admin: {
     title: "Schedule",
@@ -76,6 +95,8 @@ export const strings = {
     exportDone: "Schedule CSV downloaded",
     logout: "Sign out",
     dragHint: "Drag across slots to block or unblock",
+    blockOccupiedError:
+      "Can’t block slots that already have a booking. Cancel the booking first.",
   },
   pathwayBuilder: {
     title: "New pathway",
@@ -94,6 +115,8 @@ export const strings = {
     emptyLane: "Add blocks to build a pathway",
     closeAria: "Close",
     removeStepAria: "Remove step",
+    tooLong: (dayHours: number) =>
+      `This pathway is longer than the ${dayHours}-hour clinic day — it can never be scheduled.`,
     short: {
       doctor: "Doc",
       nmt: "NMT",
@@ -124,5 +147,7 @@ export const strings = {
     error: "Something went wrong",
     admin: "Admin",
     patient: "Patient",
+    prevWeek: "Previous week",
+    nextWeek: "Next week",
   },
 } as const;

@@ -4,6 +4,7 @@ import { DateStrip } from "../components/common/DateStrip";
 import { PathwayBuilderModal } from "../components/pathway/PathwayBuilderModal";
 import { StencilPreview } from "../components/pathway/StencilPreview";
 import { Button } from "../components/ui/Button";
+import { Toast } from "../components/ui/Toast";
 import { UserAvatarMenu } from "../components/ui/UserAvatarMenu";
 import { strings } from "../content/strings";
 import { usePathways, useDeletePathway } from "../hooks/usePathways";
@@ -12,6 +13,7 @@ import { useLogout } from "../hooks/useAuth";
 import { useScheduleStore } from "../store/scheduleStore";
 import { useAuthStore } from "../store/authStore";
 import { minutesToDurationLabel, slotIndexToLabel } from "../lib/time";
+import { ApiError } from "../api/client";
 import type { ScheduleDay } from "../types/schedule";
 
 function utilizationPercent(schedule: ScheduleDay): number {
@@ -77,6 +79,7 @@ export function AdminSchedulePage() {
   const patchSlots = usePatchSlots();
   const [builderOpen, setBuilderOpen] = useState(false);
   const [exportNote, setExportNote] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const utilized = useMemo(
     () => (schedule.data ? utilizationPercent(schedule.data) : 0),
@@ -135,14 +138,32 @@ export function AdminSchedulePage() {
               mode="admin"
               selectedDate={selectedDate}
               onToggleSlots={({ resource_type, slot_indices, blocked }) => {
-                patchSlots.mutate({
-                  date: selectedDate,
-                  resource_type,
-                  slot_indices,
-                  blocked,
-                });
+                patchSlots.mutate(
+                  {
+                    date: selectedDate,
+                    resource_type,
+                    slot_indices,
+                    blocked,
+                  },
+                  {
+                    onError: (err) => {
+                      setToast(
+                        err instanceof ApiError
+                          ? err.message
+                          : strings.admin.blockOccupiedError,
+                      );
+                    },
+                  },
+                );
               }}
             />
+          ) : schedule.isError ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 text-[var(--color-grey-700)]">
+              <p>{strings.patient.loadError}</p>
+              <Button type="button" variant="secondary" onClick={() => void schedule.refetch()}>
+                {strings.patient.retry}
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-1 items-center justify-center text-[var(--color-grey-500)]">
               {strings.common.loading}
@@ -220,6 +241,7 @@ export function AdminSchedulePage() {
       </div>
 
       <PathwayBuilderModal open={builderOpen} onClose={() => setBuilderOpen(false)} />
+      <Toast message={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

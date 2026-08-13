@@ -26,7 +26,7 @@ class ResourceSlotOut(BaseModel):
     blocked: bool = False
     free: bool
     occupants: list[OccupantOut] = []
-    # True on Patient-column cells that are uptake/gap time (resources free).
+    # True for gap/uptake cells (Patient column gaps for admin; GAP column for patients).
     is_uptake: bool = False
 
 

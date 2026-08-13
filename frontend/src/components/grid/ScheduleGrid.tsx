@@ -18,6 +18,7 @@ interface Props {
   selectedStart?: number | null;
   onSelectStart?: (start: number) => void;
   onSearchAnimationComplete?: () => void;
+  onReservedClick?: () => void;
   onToggleSlots?: (args: {
     resource_type: "doctor" | "nmt" | "scan";
     slot_indices: number[];
@@ -42,6 +43,7 @@ export function ScheduleGrid({
   selectedStart = null,
   onSelectStart,
   onSearchAnimationComplete,
+  onReservedClick,
   onToggleSlots,
 }: Props) {
   const columns = schedule.columns;
@@ -193,6 +195,7 @@ export function ScheduleGrid({
                     }
                     onMouseDown={() => beginDrag(col.resource_type, slot.slot_index, colIndex)}
                     onMouseEnter={() => extendDrag(slot.slot_index, colIndex)}
+                    onReservedClick={onReservedClick}
                   />
                 ))}
                 {drag && drag.colIndex === colIndex ? (
