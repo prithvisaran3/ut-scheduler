@@ -47,6 +47,8 @@ Health: http://localhost:8000/health
 
 | Role    | Email                     | Password           |
 |---------|---------------------------|--------------------|
+| Admin   | `admin@unithera.com`      | `Theranostics2026!` |
+| Patient | `prithvi@unithera.com`    | `Theranostics2026!` |
 | Admin   | `admin@utscheduler.com`   | `Theranostics2026!` |
 | Patient | `patient@utscheduler.com` | `Theranostics2026!` |
 
