@@ -66,14 +66,14 @@ def seed() -> None:
 
         today = date.today()
 
-        # Morning doctor blocks (08:00–10:00 → slots 0–3)
-        # Midday doctor cluster (11:00–13:00 → slots 6–9)
-        # Late-afternoon doctor (16:00–17:00 → slots 16–17)
-        doctor_slots = [0, 1, 2, 3, 6, 7, 8, 9, 16, 17]
-        # NMT dose-prep mid-morning (09:00–10:30 → slots 2–4) + mid-afternoon (14:00–15:00 → 12–13)
-        nmt_slots = [2, 3, 4, 12, 13]
-        # Scan late morning (10:00–11:00 → 4–5) + afternoon (15:00–16:00 → 14–15)
-        scan_slots = [4, 5, 14, 15]
+        # Morning / midday occupancy that still leaves a clear afternoon window
+        # for a live-created Pathway 1 (9 blocks / 4h 30m) to fit.
+        # Doctor: early morning + late-morning cluster (08:00–10:00, 11:00–12:00)
+        doctor_slots = [0, 1, 2, 3, 6, 7]
+        # NMT dose-prep (09:00–10:00)
+        nmt_slots = [2, 3]
+        # Scan camera block (10:00–11:00)
+        scan_slots = [4, 5]
 
         for idx in doctor_slots:
             db.add(
