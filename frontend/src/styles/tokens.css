@@ -53,6 +53,15 @@
   --color-resource-gap-fg: var(--color-grey-300);
   --color-resource-gap-bg: var(--color-grey-100);
 
+  /* Admin-blocked slot: Grey-50 field + Grey-300 45° hatch (not solid grey) */
+  --pattern-blocked: repeating-linear-gradient(
+    45deg,
+    var(--color-grey-300) 0,
+    var(--color-grey-300) 1px,
+    var(--color-grey-50) 1px,
+    var(--color-grey-50) 6px
+  );
+
   /* Radii (from design export) */
   --radius-xs: 2px;
   --radius-sm: 4px;

@@ -20,7 +20,7 @@ export function GridCell({
 }: Props) {
   const isGap = resourceType === "gap";
   const occupied = slot.occupied > 0;
-  const blocked = slot.blocked;
+  const blocked = slot.blocked && !isGap;
   const showName =
     mode === "admin" && occupied && !isGap && !!slot.occupants[0]?.patient_name;
   const unavailableHint =
@@ -28,11 +28,17 @@ export function GridCell({
       ? strings.grid.unavailable
       : undefined;
 
+  // Priority: selection overlay > booked (navy) > blocked (hatch) > gap tint > empty
   let bg = "transparent";
-  if (blocked && !isGap) bg = "var(--color-grey-200)";
-  else if (occupied && !isGap) bg = "var(--color-navy-700)";
-  else if (occupied && isGap) bg = "var(--color-grey-100)";
-  if (selected) bg = "var(--overlay-marquee)";
+  if (selected) {
+    bg = "var(--overlay-marquee)";
+  } else if (occupied && !isGap) {
+    bg = "var(--color-navy-700)";
+  } else if (blocked) {
+    bg = "var(--pattern-blocked)";
+  } else if (occupied && isGap) {
+    bg = "var(--color-grey-100)";
+  }
 
   return (
     <div
@@ -44,6 +50,7 @@ export function GridCell({
       }}
       title={unavailableHint}
       aria-label={unavailableHint}
+      data-blocked={blocked ? "true" : undefined}
       onMouseDown={onMouseDown}
       onMouseEnter={onMouseEnter}
     >
