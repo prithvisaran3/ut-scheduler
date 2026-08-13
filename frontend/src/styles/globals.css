@@ -1,0 +1,75 @@
+@import "./tokens.css";
+@import "tailwindcss";
+
+@theme inline {
+  --color-navy-950: var(--color-navy-950);
+  --color-navy-900: var(--color-navy-900);
+  --color-navy-800: var(--color-navy-800);
+  --color-navy-700: var(--color-navy-700);
+  --color-navy-600: var(--color-navy-600);
+  --color-navy-300: var(--color-navy-300);
+  --color-navy-100: var(--color-navy-100);
+  --color-navy-50: var(--color-navy-50);
+
+  --color-salmon-700: var(--color-salmon-700);
+  --color-salmon-600: var(--color-salmon-600);
+  --color-salmon-500: var(--color-salmon-500);
+  --color-salmon-400: var(--color-salmon-400);
+  --color-salmon-200: var(--color-salmon-200);
+  --color-salmon-100: var(--color-salmon-100);
+  --color-salmon-50: var(--color-salmon-50);
+
+  --color-grey-900: var(--color-grey-900);
+  --color-grey-700: var(--color-grey-700);
+  --color-grey-500: var(--color-grey-500);
+  --color-grey-300: var(--color-grey-300);
+  --color-grey-200: var(--color-grey-200);
+  --color-grey-100: var(--color-grey-100);
+  --color-grey-50: var(--color-grey-50);
+
+  --color-ink: var(--color-ink);
+  --color-white: var(--color-white);
+
+  --font-sans: var(--font-sans);
+
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-glow-salmon: var(--shadow-glow-salmon);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular-nums,
+.time-label {
+  font-variant-numeric: tabular-nums;
+}
+
+button,
+input {
+  font: inherit;
+}

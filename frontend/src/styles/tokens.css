@@ -1,0 +1,95 @@
+/**
+ * Design tokens extracted from design-reference/UT Scheduler (standalone).html.
+ * This is the ONLY file that may contain hex colors, border-radius, or box-shadow literals.
+ * Every component must read these CSS custom properties — never hardcode visual values.
+ */
+
+:root {
+  /* Navy */
+  --color-navy-950: #050F1F;
+  --color-navy-900: #0A2240;
+  --color-navy-800: #123156;
+  --color-navy-700: #1B4275;
+  --color-navy-600: #275A96;
+  --color-navy-300: #8FA8C4;
+  --color-navy-100: #D6E0EC;
+  --color-navy-50: #EEF3F8;
+
+  /* Salmon */
+  --color-salmon-700: #C4512F;
+  --color-salmon-600: #E0633C;
+  --color-salmon-500: #F4795B;
+  --color-salmon-400: #F79379;
+  --color-salmon-200: #FBC9BB;
+  --color-salmon-100: #FDE4DC;
+  --color-salmon-50: #FEF3EF;
+
+  /* Grey */
+  --color-grey-900: #16191D;
+  --color-grey-700: #3D444E;
+  --color-grey-500: #6B7480;
+  --color-grey-300: #C3CAD3;
+  --color-grey-200: #E1E6EC;
+  --color-grey-100: #F0F3F7;
+  --color-grey-50: #F7F9FB;
+
+  /* Ink / White */
+  --color-ink: #0A0C0F;
+  --color-white: #FFFFFF;
+
+  /* Semantic aliases */
+  --color-bg: var(--color-grey-50);
+  --color-surface: var(--color-white);
+  --color-text: var(--color-ink);
+  --color-text-muted: var(--color-grey-500);
+  --color-text-strong: var(--color-navy-900);
+  --color-border: var(--color-grey-200);
+  --color-border-strong: var(--color-grey-300);
+  --color-accent: var(--color-salmon-500);
+  --color-accent-strong: var(--color-salmon-700);
+  --color-resource-doctor: var(--color-navy-800);
+  --color-resource-nmt: var(--color-navy-700);
+  --color-resource-scan: var(--color-navy-600);
+  --color-resource-gap-fg: var(--color-grey-300);
+  --color-resource-gap-bg: var(--color-grey-100);
+
+  /* Radii (from design export) */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-block: 5px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 14px;
+  --radius-3xl: 16px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(10, 34, 64, 0.06);
+  --shadow-sm: 0 4px 12px rgba(10, 34, 64, 0.08);
+  --shadow-md: 0 12px 32px rgba(10, 34, 64, 0.14);
+  --shadow-bottom-bar: 0 -12px 32px rgba(10, 34, 64, 0.14);
+  --shadow-glow-salmon: 0 0 24px rgba(244, 121, 91, 0.25);
+
+  /* Overlays / fills used in design */
+  --overlay-marquee: rgba(251, 201, 187, 0.55);
+  --overlay-modal: rgba(22, 25, 29, 0.6);
+  --overlay-stencil-flight: rgba(253, 228, 220, 0.55);
+
+  /* Grid geometry */
+  --grid-row-height: 32px;
+  --grid-gutter-width: 88px;
+  --grid-header-height: 36px;
+
+  /* Type scale (Inter) */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --text-10: 10px;
+  --text-11: 11px;
+  --text-12: 12px;
+  --text-13: 13px;
+  --text-14: 14px;
+  --text-15: 15px;
+  --text-16: 16px;
+  --text-20: 20px;
+  --text-30: 30px;
+}

@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / frontend
+node_modules/
+dist/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+*.local
+.vite/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Design export (large local asset — keep out of deploy if needed)
+# design-reference/  # keep in repo for interview reference unless too large
+
+# Logs
+*.log
+npm-debug.log*

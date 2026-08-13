@@ -1,0 +1,64 @@
+import { strings } from "../../content/strings";
+import { slotIndexToLabel } from "../../lib/time";
+
+interface Props {
+  resourceType: string;
+  startSlot: number;
+  endSlot: number;
+  onBlock: () => void;
+  onUnblock: () => void;
+}
+
+export function DragMarquee({
+  resourceType,
+  startSlot,
+  endSlot,
+  onBlock,
+  onUnblock,
+}: Props) {
+  const top = Math.min(startSlot, endSlot);
+  const bottom = Math.max(startSlot, endSlot);
+  const count = bottom - top + 1;
+  const height = count * 32;
+
+  return (
+    <div
+      className="pointer-events-none absolute z-30"
+      style={{
+        top: top * 32,
+        height,
+        left: 0,
+        right: 0,
+        background: "var(--overlay-marquee)",
+        border: "2px dashed var(--color-salmon-500)",
+        borderRadius: "var(--radius-md)",
+      }}
+    >
+      <div
+        className="pointer-events-auto absolute -left-2 -top-11 flex items-center gap-2.5 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--color-grey-200)] bg-[var(--color-white)] px-3 py-2 shadow-[var(--shadow-sm)]"
+      >
+        <span className="text-[length:var(--text-13)] font-medium text-[var(--color-navy-900)]">
+          {strings.admin.slotsSelected(count)} · {resourceType}
+        </span>
+        <span className="h-3.5 w-px bg-[var(--color-grey-200)]" />
+        <button
+          type="button"
+          className="text-[length:var(--text-13)] font-medium text-[var(--color-salmon-700)]"
+          onClick={onBlock}
+        >
+          {strings.admin.markUnavailable}
+        </button>
+        <button
+          type="button"
+          className="text-[length:var(--text-13)] font-medium text-[var(--color-navy-600)]"
+          onClick={onUnblock}
+        >
+          {strings.admin.markAvailable}
+        </button>
+      </div>
+      <div className="absolute left-3 top-full mt-1.5 text-[length:var(--text-11)] font-medium text-[var(--color-salmon-700)]">
+        {slotIndexToLabel(top)} — {slotIndexToLabel(bottom + 1)}
+      </div>
+    </div>
+  );
+}
