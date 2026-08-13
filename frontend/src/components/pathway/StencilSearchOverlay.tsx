@@ -1,9 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import {
+  DndContext,
+  PointerSensor,
+  useDraggable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type Modifier,
+} from "@dnd-kit/core";
 import type { BookingSearchResponse, BookingSlot } from "../../types/booking";
 import { strings } from "../../content/strings";
 import { slotIndexToLabel } from "../../lib/time";
 import { chipVariants, stencilFlightSpring, stepDelay } from "../../lib/motion";
+import { nearestFeasibleStart } from "../../lib/pathwayPlacement";
 import { SLOTS_PER_DAY } from "../../lib/scheduleConfig";
 
 /** Patient grid columns under the time gutter: doctor / nmt / gap / scan */
@@ -15,6 +25,7 @@ const COL_LEFT: Record<string, string> = {
 };
 
 const ROW_H = 32; // matches --grid-row-height
+const PLACEMENT_ID = "pathway-placement";
 
 interface FootprintRun {
   resourceType: string;
@@ -61,17 +72,121 @@ export function buildFootprintRuns(slots: BookingSlot[]): FootprintRun[] {
 interface Props {
   result: BookingSearchResponse | null;
   animating: boolean;
+  selectedStart: number | null;
+  onSelectStart?: (start: number) => void;
   onAnimationComplete?: () => void;
 }
 
-export function StencilSearchOverlay({ result, animating, onAnimationComplete }: Props) {
+function createSnapModifier(baseStart: number, feasible: number[]): Modifier {
+  return ({ transform }) => {
+    const deltaSlots = Math.round(transform.y / ROW_H);
+    const candidate = baseStart + deltaSlots;
+    const snapped = nearestFeasibleStart(candidate, feasible) ?? baseStart;
+    return {
+      ...transform,
+      x: 0,
+      y: (snapped - baseStart) * ROW_H,
+    };
+  };
+}
+
+function FootprintRuns({
+  runs,
+  landed,
+  ghosting,
+}: {
+  runs: FootprintRun[];
+  landed: boolean;
+  ghosting?: boolean;
+}) {
+  return (
+    <>
+      {runs.map((run) => {
+        const left = COL_LEFT[run.resourceType] ?? "0%";
+        const top = run.startSlot * ROW_H;
+        const height = (run.endSlotExclusive - run.startSlot) * ROW_H;
+        const isGap = run.resourceType === "gap";
+
+        return (
+          <div
+            key={`${run.resourceType}-${run.startSlot}`}
+            className="absolute box-border"
+            style={{
+              top: top + 2,
+              height: height - 4,
+              left: `calc(${left} + 4px)`,
+              width: "calc(25% - 8px)",
+              borderRadius: "var(--radius-sm)",
+              border: landed
+                ? "1.5px solid var(--color-salmon-500)"
+                : "1.5px solid var(--color-salmon-400)",
+              background: landed
+                ? "var(--color-salmon-100)"
+                : "var(--overlay-stencil-flight)",
+              boxShadow: landed ? "var(--shadow-glow-salmon)" : undefined,
+              opacity: ghosting ? (isGap ? 0.3 : 0.55) : isGap ? 0.5 : landed ? 1 : 0.75,
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function DraggablePlacement({
+  runs,
+  enabled,
+}: {
+  runs: FootprintRun[];
+  enabled: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: PLACEMENT_ID,
+    disabled: !enabled,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={enabled ? "pointer-events-auto cursor-grab active:cursor-grabbing" : "pointer-events-none"}
+      style={
+        transform
+          ? { transform: `translate3d(0, ${transform.y}px, 0)` }
+          : undefined
+      }
+      {...listeners}
+      {...attributes}
+    >
+      <FootprintRuns runs={runs} landed ghosting={isDragging} />
+    </div>
+  );
+}
+
+export function StencilSearchOverlay({
+  result,
+  animating,
+  selectedStart,
+  onSelectStart,
+  onAnimationComplete,
+}: Props) {
   const [phase, setPhase] = useState<"idle" | "searching" | "landed">("idle");
   const [visibleRejects, setVisibleRejects] = useState<number>(0);
 
+  const feasible = result?.feasible_starts?.length
+    ? result.feasible_starts
+    : result?.earliest_start_slot != null
+      ? [result.earliest_start_slot]
+      : [];
+
   useEffect(() => {
-    if (!result || !animating) {
+    if (!result || result.earliest_start_slot == null) {
       setPhase("idle");
       setVisibleRejects(0);
+      return;
+    }
+    if (!animating) {
+      setPhase("landed");
+      setVisibleRejects(result.rejected_attempts.length);
       return;
     }
 
@@ -97,38 +212,52 @@ export function StencilSearchOverlay({ result, animating, onAnimationComplete }:
     return () => timers.forEach((t) => window.clearTimeout(t));
   }, [result, animating, onAnimationComplete]);
 
+  // Runs are always positioned at the earliest-fit absolute slots; we translate the group.
   const runs = useMemo(
     () => (result?.slots?.length ? buildFootprintRuns(result.slots) : []),
     [result],
   );
 
-  if (!result || result.earliest_start_slot == null) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
+
+  const baseStart = selectedStart;
+  const snapModifier = useMemo(
+    () =>
+      baseStart != null && feasible.length ? createSnapModifier(baseStart, feasible) : undefined,
+    [baseStart, feasible],
+  );
+
+  const onDragEnd = (event: DragEndEvent) => {
+    if (baseStart == null || !onSelectStart) return;
+    const deltaSlots = Math.round(event.delta.y / ROW_H);
+    const snapped = nearestFeasibleStart(baseStart + deltaSlots, feasible);
+    if (snapped != null) onSelectStart(snapped);
+  };
+
+  if (!result || result.earliest_start_slot == null || selectedStart == null) {
     return null;
   }
 
-  const start = result.earliest_start_slot;
+  const earliest = result.earliest_start_slot;
 
-  // During search, the footprint shape descends through rejected starts then snaps to winner
   const searchY =
-    phase === "searching" && result.rejected_attempts.length > 0
-      ? (result.rejected_attempts[
-          Math.min(visibleRejects, result.rejected_attempts.length) - 1
-        ]?.slot_index ?? start)
-      : start;
+    phase === "searching" && visibleRejects > 0
+      ? result.rejected_attempts[visibleRejects - 1].slot_index
+      : earliest;
 
-  const y = phase === "landed" ? start : Math.min(searchY, start);
-  // Runs are positioned at absolute winning slots; translate the group so the
-  // stencil shape flies as a unit through candidate starts.
-  const translateY = (y - start) * ROW_H;
+  const displayStart = phase === "landed" ? selectedStart : searchY;
+  const translateY = (displayStart - earliest) * ROW_H;
+  const dragEnabled = phase === "landed" && feasible.length > 0 && !!onSelectStart;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-      {/* Rejected attempt chips in the time gutter only — not full-window ghosts */}
+    <div className="absolute inset-0 z-20 overflow-hidden">
       <AnimatePresence>
         {result.rejected_attempts.slice(0, visibleRejects).map((attempt) => (
           <motion.div
             key={`${attempt.slot_index}-${attempt.blocking_resource}`}
-            className="absolute left-0 w-[var(--grid-gutter-width)] pr-2 text-right"
+            className="pointer-events-none absolute left-0 w-[var(--grid-gutter-width)] pr-2 text-right"
             style={{ top: attempt.slot_index * ROW_H }}
             variants={chipVariants}
             initial="hidden"
@@ -144,46 +273,35 @@ export function StencilSearchOverlay({ result, animating, onAnimationComplete }:
         ))}
       </AnimatePresence>
 
-      {/* Per-column footprint runs — never a single cross-column bounding box */}
-      <motion.div
-        className="absolute left-[var(--grid-gutter-width)] right-0 top-0"
-        initial={false}
-        animate={{ y: translateY }}
-        transition={stencilFlightSpring}
-      >
-        {runs.map((run) => {
-          const left = COL_LEFT[run.resourceType] ?? "0%";
-          const top = run.startSlot * ROW_H;
-          const height = (run.endSlotExclusive - run.startSlot) * ROW_H;
-          const isGap = run.resourceType === "gap";
-          const landed = phase === "landed";
+      <div className="absolute left-[var(--grid-gutter-width)] right-0 top-0">
+        {dragEnabled ? (
+          <DndContext
+            sensors={sensors}
+            modifiers={snapModifier ? [snapModifier] : []}
+            onDragEnd={onDragEnd}
+          >
+            <motion.div
+              className="relative"
+              initial={false}
+              animate={{ y: translateY }}
+              transition={stencilFlightSpring}
+            >
+              <DraggablePlacement runs={runs} enabled />
+            </motion.div>
+          </DndContext>
+        ) : (
+          <motion.div
+            className="pointer-events-none relative"
+            initial={false}
+            animate={{ y: translateY }}
+            transition={stencilFlightSpring}
+          >
+            <FootprintRuns runs={runs} landed={phase === "landed"} />
+          </motion.div>
+        )}
+      </div>
 
-          return (
-            <div
-              key={`${run.resourceType}-${run.startSlot}`}
-              className="absolute box-border"
-              style={{
-                top: top + 2,
-                height: height - 4,
-                left: `calc(${left} + 4px)`,
-                width: "calc(25% - 8px)",
-                borderRadius: "var(--radius-sm)",
-                border: landed
-                  ? "1.5px solid var(--color-salmon-500)"
-                  : "1.5px solid var(--color-salmon-400)",
-                background: landed
-                  ? "var(--color-salmon-100)"
-                  : "var(--overlay-stencil-flight)",
-                boxShadow: landed ? "var(--shadow-glow-salmon)" : undefined,
-                opacity: isGap ? 0.5 : landed ? 1 : 0.75,
-              }}
-            />
-          );
-        })}
-      </motion.div>
-
-      {/* Spacer so absolute overlay covers the full day height */}
-      <div style={{ height: SLOTS_PER_DAY * ROW_H }} />
+      <div className="pointer-events-none" style={{ height: SLOTS_PER_DAY * ROW_H }} />
     </div>
   );
 }

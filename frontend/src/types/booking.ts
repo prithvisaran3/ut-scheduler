@@ -17,6 +17,7 @@ export interface BookingSearchResponse {
   date: string;
   earliest_start_slot: number | null;
   end_slot: number | null;
+  feasible_starts: number[];
   rejected_attempts: RejectedAttempt[];
   slots: BookingSlot[];
   total_blocks: number;

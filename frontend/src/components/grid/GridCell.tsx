@@ -20,7 +20,7 @@ export function GridCell({
   const blocked = slot.blocked;
 
   let bg = "transparent";
-  if (blocked) bg = "var(--color-grey-200)";
+  if (blocked && !isGap) bg = "var(--color-grey-200)";
   else if (occupied && !isGap) bg = "var(--color-navy-700)";
   else if (occupied && isGap) bg = "var(--color-grey-100)";
   if (selected) bg = "var(--overlay-marquee)";
@@ -31,10 +31,6 @@ export function GridCell({
       style={{
         height: "var(--grid-row-height)",
         background: bg,
-        backgroundImage:
-          isGap && !occupied
-            ? "repeating-linear-gradient(45deg, transparent, transparent 4px, var(--color-grey-100) 4px, var(--color-grey-100) 5px)"
-            : undefined,
         cursor: isGap || resourceType === "patient" ? "default" : "crosshair",
       }}
       onMouseDown={onMouseDown}

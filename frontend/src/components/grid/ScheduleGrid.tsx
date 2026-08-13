@@ -15,6 +15,9 @@ interface Props {
   selectedDate?: string;
   searchResult?: BookingSearchResponse | null;
   searching?: boolean;
+  selectedStart?: number | null;
+  onSelectStart?: (start: number) => void;
+  onSearchAnimationComplete?: () => void;
   onToggleSlots?: (args: {
     resource_type: "doctor" | "nmt" | "scan";
     slot_indices: number[];
@@ -36,6 +39,9 @@ export function ScheduleGrid({
   selectedDate,
   searchResult = null,
   searching = false,
+  selectedStart = null,
+  onSelectStart,
+  onSearchAnimationComplete,
   onToggleSlots,
 }: Props) {
   const columns = schedule.columns;
@@ -195,7 +201,13 @@ export function ScheduleGrid({
           className="pointer-events-none absolute inset-0 z-20"
           style={{ top: "var(--grid-header-height)" }}
         >
-          <StencilSearchOverlay result={searchResult} animating={searching || !!searchResult} />
+          <StencilSearchOverlay
+            result={searchResult}
+            animating={searching}
+            selectedStart={selectedStart}
+            onSelectStart={onSelectStart}
+            onAnimationComplete={onSearchAnimationComplete}
+          />
         </div>
       ) : null}
     </div>

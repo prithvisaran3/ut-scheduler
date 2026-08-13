@@ -43,6 +43,10 @@ export const strings = {
     logout: "Sign out",
     noPathwaysYet: "No pathways available yet",
     noPathwaysHint: "An admin needs to create a treatment pathway before you can book.",
+    availableTimes: "Available times",
+    selectedPlacement: "Selected placement",
+    noTimesToday: "No openings on this day",
+    dragHint: "Drag the pathway on the grid, or pick a time",
   },
   admin: {
     title: "Schedule",

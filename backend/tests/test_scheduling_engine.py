@@ -92,3 +92,20 @@ def test_inconsistent_block_count_raises() -> None:
         build_requirement_array(
             [{"resource_type": "doctor", "duration_minutes": 90, "block_count": 2, "sequence_order": 0}]
         )
+
+
+def test_feasible_starts_lists_every_valid_window() -> None:
+    """A short pathway that fits in exactly 3 places must return those 3 starts."""
+    used, cap = _empty_day()
+    # Doctor busy everywhere except slots 2, 5, and 10 (single-slot pathway).
+    used[0, :] = 1
+    used[0, 2] = 0
+    used[0, 5] = 0
+    used[0, 10] = 0
+    req = build_requirement_array(
+        [{"resource_type": "doctor", "duration_minutes": 30, "block_count": 1, "sequence_order": 0}]
+    )
+    result = find_earliest_fit(used, cap, req)
+    assert result.feasible_starts == [2, 5, 10]
+    assert result.earliest_start_slot == 2
+    assert result.end_slot == 3

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ScheduleGrid } from "../components/grid/ScheduleGrid";
-import { DateStrip } from "../components/admin/DateStrip";
+import { DateStrip } from "../components/common/DateStrip";
 import { PathwayBuilderModal } from "../components/pathway/PathwayBuilderModal";
 import { StencilPreview } from "../components/pathway/StencilPreview";
 import { Button } from "../components/ui/Button";

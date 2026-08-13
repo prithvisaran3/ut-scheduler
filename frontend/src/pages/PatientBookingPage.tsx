@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { addDays, format, parseISO } from "date-fns";
 import { PathwaySelector } from "../components/pathway/PathwaySelector";
 import { EmptyStateCard } from "../components/pathway/EmptyStateCard";
+import { AvailableTimesPanel } from "../components/pathway/AvailableTimesPanel";
+import { DateStrip } from "../components/common/DateStrip";
 import { ScheduleGrid } from "../components/grid/ScheduleGrid";
 import { Button } from "../components/ui/Button";
 import { UserAvatarMenu } from "../components/ui/UserAvatarMenu";
@@ -28,6 +30,7 @@ export function PatientBookingPage() {
 
   const [result, setResult] = useState<BookingSearchResponse | null>(null);
   const [landed, setLanded] = useState(false);
+  const [selectedStart, setSelectedStart] = useState<number | null>(null);
 
   useEffect(() => {
     if (!pathways.data) return;
@@ -44,25 +47,46 @@ export function PatientBookingPage() {
     if (!selectedPathwayId) {
       setLanded(false);
       setResult(null);
+      setSelectedStart(null);
       return;
     }
     setLanded(false);
     setResult(null);
+    setSelectedStart(null);
     search.mutate(
       { pathway_id: selectedPathwayId, date: selectedDate },
       {
-        onSuccess: (data) => setResult(data),
+        onSuccess: (data) => {
+          setResult(data);
+          setSelectedStart(data.earliest_start_slot);
+        },
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPathwayId, selectedDate]);
 
   const noFit = result && result.earliest_start_slot == null;
-  const dateLabel = format(parseISO(selectedDate), "EEEE, d MMMM");
   const selectedPathway = useMemo(
     () => pathways.data?.find((p) => p.id === selectedPathwayId) ?? null,
     [pathways.data, selectedPathwayId],
   );
+
+  const feasibleStarts = result?.feasible_starts?.length
+    ? result.feasible_starts
+    : result?.earliest_start_slot != null
+      ? [result.earliest_start_slot]
+      : [];
+
+  const canConfirm =
+    !!result &&
+    selectedStart != null &&
+    feasibleStarts.includes(selectedStart) &&
+    !!selectedPathwayId &&
+    !confirm.isPending &&
+    landed;
+
+  const placementEnd =
+    selectedStart != null && result ? selectedStart + result.total_blocks : null;
 
   return (
     <div className="flex h-screen flex-col bg-[var(--color-white)]">
@@ -75,12 +99,7 @@ export function PatientBookingPage() {
             {strings.appName}
           </div>
           <div className="h-[18px] w-px bg-[var(--color-grey-200)]" />
-          <div
-            className="text-[var(--color-grey-500)]"
-            style={{ fontSize: "var(--text-13)" }}
-          >
-            {dateLabel}
-          </div>
+          <DateStrip selectedDate={selectedDate} onChange={setSelectedDate} />
         </div>
         <UserAvatarMenu
           fullName={fullName}
@@ -98,38 +117,53 @@ export function PatientBookingPage() {
         />
       ) : null}
 
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col px-8 pb-0">
-        {schedule.data ? (
-          <div className={noFit ? "min-h-0 flex-1 opacity-50 blur-[3px]" : "min-h-0 flex-1"}>
-            <ScheduleGrid
-              schedule={schedule.data}
-              mode="patient"
-              searchResult={noFit ? null : result}
-              searching={!noFit && (search.isPending || (!!result && !landed))}
-            />
-          </div>
-        ) : (
-          <div className="flex flex-1 items-center justify-center text-[var(--color-grey-500)]">
-            {strings.common.loading}
-          </div>
-        )}
+      <div className="relative flex min-h-0 min-w-0 flex-1">
+        <div className="relative flex min-h-0 min-w-0 flex-[1_1_65%] flex-col px-8 pb-0">
+          {schedule.data ? (
+            <div className={noFit ? "min-h-0 flex-1 opacity-50 blur-[3px]" : "min-h-0 flex-1"}>
+              <ScheduleGrid
+                schedule={schedule.data}
+                mode="patient"
+                selectedDate={selectedDate}
+                searchResult={noFit ? null : result}
+                searching={!noFit && (search.isPending || (!!result && !landed))}
+                selectedStart={noFit ? null : selectedStart}
+                onSelectStart={setSelectedStart}
+                onSearchAnimationComplete={() => setLanded(true)}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-[var(--color-grey-500)]">
+              {strings.common.loading}
+            </div>
+          )}
 
-        {noFit && selectedPathway ? (
-          <div className="absolute inset-0 z-40 flex items-center justify-center bg-[var(--overlay-modal)]/30">
-            <EmptyStateCard
-              pathwayName={selectedPathway.name}
-              durationLabel={minutesToDurationLabel(selectedPathway.total_minutes)}
-              onShowNextDay={() =>
-                setSelectedDate(format(addDays(parseISO(selectedDate), 1), "yyyy-MM-dd"))
-              }
-              onChooseDifferent={() => {
-                if (!pathways.data?.length) return;
-                const idx = pathways.data.findIndex((p) => p.id === selectedPathwayId);
-                const next = pathways.data[(idx + 1) % pathways.data.length];
-                setSelectedPathwayId(next.id);
-              }}
-            />
-          </div>
+          {noFit && selectedPathway ? (
+            <div className="absolute inset-0 z-40 flex items-center justify-center bg-[var(--overlay-modal)]/30">
+              <EmptyStateCard
+                pathwayName={selectedPathway.name}
+                durationLabel={minutesToDurationLabel(selectedPathway.total_minutes)}
+                onShowNextDay={() =>
+                  setSelectedDate(format(addDays(parseISO(selectedDate), 1), "yyyy-MM-dd"))
+                }
+                onChooseDifferent={() => {
+                  if (!pathways.data?.length) return;
+                  const idx = pathways.data.findIndex((p) => p.id === selectedPathwayId);
+                  const next = pathways.data[(idx + 1) % pathways.data.length];
+                  setSelectedPathwayId(next.id);
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+
+        {!noFit ? (
+          <AvailableTimesPanel
+            feasibleStarts={feasibleStarts}
+            totalBlocks={result?.total_blocks ?? 0}
+            selectedStart={selectedStart}
+            onSelect={setSelectedStart}
+          />
         ) : null}
       </div>
 
@@ -141,8 +175,8 @@ export function PatientBookingPage() {
           <div className="text-[length:var(--text-30)] font-semibold tracking-[-0.01em] text-[var(--color-ink)]">
             {!selectedPathwayId
               ? strings.patient.noPathwaysYet
-              : result?.earliest_start_slot != null && result.end_slot != null
-                ? `${strings.patient.earliestAvailable} — ${slotRangeLabel(result.earliest_start_slot, result.end_slot)}`
+              : selectedStart != null && placementEnd != null
+                ? `${strings.patient.selected} — ${slotRangeLabel(selectedStart, placementEnd)}`
                 : noFit
                   ? strings.empty.title
                   : strings.patient.searching}
@@ -156,45 +190,21 @@ export function PatientBookingPage() {
             </div>
           ) : null}
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="secondary" type="button">
-            {strings.patient.seeOtherTimes}
-          </Button>
-          <Button
-            type="button"
-            disabled={
-              !result ||
-              result.earliest_start_slot == null ||
-              confirm.isPending ||
-              !selectedPathwayId
-            }
-            onClick={() => {
-              if (!result || result.earliest_start_slot == null || !selectedPathwayId) return;
-              confirm.mutate({
-                pathway_id: selectedPathwayId,
-                date: selectedDate,
-                start_slot: result.earliest_start_slot,
-              });
-            }}
-          >
-            {strings.patient.confirm}
-          </Button>
-        </div>
+        <Button
+          type="button"
+          disabled={!canConfirm}
+          onClick={() => {
+            if (!canConfirm || selectedStart == null || !selectedPathwayId) return;
+            confirm.mutate({
+              pathway_id: selectedPathwayId,
+              date: selectedDate,
+              start_slot: selectedStart,
+            });
+          }}
+        >
+          {strings.patient.confirm}
+        </Button>
       </footer>
-      {result && !landed && !noFit ? (
-        <LandedWatcher
-          delay={Math.max(result.rejected_attempts.length, 1) * 180 + 400}
-          onDone={() => setLanded(true)}
-        />
-      ) : null}
     </div>
   );
-}
-
-function LandedWatcher({ delay, onDone }: { delay: number; onDone: () => void }) {
-  useEffect(() => {
-    const t = window.setTimeout(onDone, delay);
-    return () => window.clearTimeout(t);
-  }, [delay, onDone]);
-  return null;
 }

@@ -29,6 +29,7 @@ class BookingSearchResponse(BaseModel):
     date: date
     earliest_start_slot: int | None
     end_slot: int | None
+    feasible_starts: list[int] = []
     rejected_attempts: list[RejectedAttemptOut]
     slots: list[BookingSlotOut]
     total_blocks: int

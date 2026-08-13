@@ -43,6 +43,7 @@ class FitResult:
     end_slot: int | None
     rejected_attempts: list[RejectedAttempt] = field(default_factory=list)
     requirement_length: int = 0
+    feasible_starts: list[int] = field(default_factory=list)
 
 
 def normalize_steps(steps: Sequence[PathwayStepLike | dict]) -> list[PathwayStepLike]:
@@ -155,10 +156,11 @@ def find_earliest_fit(
     if length == 0:
         raise ValueError("requirement must be non-empty")
     if length > t:
-        return FitResult(None, None, [], length)
+        return FitResult(None, None, [], length, [])
 
     max_start = t - length
     rejected: list[RejectedAttempt] = []
+    feasible: list[int] = []
 
     # Vectorized: for each capacity resource, build a boolean mask of starts where
     # that resource would exceed capacity somewhere in the L-window.
@@ -174,21 +176,17 @@ def find_earliest_fit(
         fail_r = np.any(needed > capacity[r], axis=1)
         fail_any |= fail_r
 
+    # Single pass: collect every feasible start (and rejected attempts before the first fit).
     for s in range(max_start + 1):
         if not fail_any[s]:
-            # Double-check with exact logic (guards float/dtype edge cases)
             blocking = _first_blocking_resource(used, capacity, requirement, s)
             if blocking is None:
-                return FitResult(
-                    earliest_start_slot=s,
-                    end_slot=s + length,
-                    rejected_attempts=rejected,
-                    requirement_length=length,
-                )
+                feasible.append(s)
+                continue
             # Extremely rare mismatch — treat as fail and continue
             fail_any[s] = True
 
-        if len(rejected) < max_rejected:
+        if not feasible and len(rejected) < max_rejected:
             blocking = _first_blocking_resource(used, capacity, requirement, s)
             if blocking is not None:
                 resource_name, offset = blocking
@@ -196,7 +194,17 @@ def find_earliest_fit(
                     RejectedAttempt(slot_index=s, blocking_resource=resource_name, offset=offset)
                 )
 
-    return FitResult(None, None, rejected, length)
+    if not feasible:
+        return FitResult(None, None, rejected, length, [])
+
+    earliest = feasible[0]
+    return FitResult(
+        earliest_start_slot=earliest,
+        end_slot=earliest + length,
+        rejected_attempts=rejected,
+        requirement_length=length,
+        feasible_starts=feasible,
+    )
 
 
 def expand_booking_slots(

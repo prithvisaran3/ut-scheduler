@@ -62,6 +62,7 @@ def _search_response(
         date=day,
         earliest_start_slot=fit.earliest_start_slot,
         end_slot=fit.end_slot,
+        feasible_starts=list(fit.feasible_starts),
         rejected_attempts=[
             RejectedAttemptOut(
                 slot_index=a.slot_index,
