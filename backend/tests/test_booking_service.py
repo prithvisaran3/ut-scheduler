@@ -90,7 +90,7 @@ def test_concurrent_booking_only_one_succeeds(test_engine) -> None:
             pathway.steps.append(
                 PathwayStep(
                     resource_type=StepResourceType.doctor,
-                    duration_minutes=30,
+                    duration_minutes=15,
                     block_count=1,
                     sequence_order=0,
                 )

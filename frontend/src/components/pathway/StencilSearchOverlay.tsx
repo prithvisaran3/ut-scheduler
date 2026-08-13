@@ -14,17 +14,18 @@ import { strings } from "../../content/strings";
 import { slotIndexToLabel } from "../../lib/time";
 import { chipVariants, stencilFlightSpring, stepDelay } from "../../lib/motion";
 import { nearestFeasibleStart } from "../../lib/pathwayPlacement";
-import { SLOTS_PER_DAY } from "../../lib/scheduleConfig";
+import { GRID_ROW_HEIGHT_PX, SLOTS_PER_DAY } from "../../lib/scheduleConfig";
 
-/** Patient grid columns under the time gutter: doctor / nmt / gap / scan */
+/** Spreadsheet columns under the time gutter: Doctor | NMT | Patient | Scan */
 const COL_LEFT: Record<string, string> = {
   doctor: "0%",
   nmt: "25%",
-  gap: "50%",
+  patient: "50%",
+  gap: "50%", // uptake renders in the Patient column
   scan: "75%",
 };
 
-const ROW_H = 32; // matches --grid-row-height
+const ROW_H = GRID_ROW_HEIGHT_PX;
 const PLACEMENT_ID = "pathway-placement";
 
 interface FootprintRun {
@@ -33,18 +34,26 @@ interface FootprintRun {
   endSlotExclusive: number;
 }
 
-/** Merge a pathway's slots into contiguous per-column runs (no cross-column boxes). */
+/** Merge a pathway's slots into contiguous per-column runs (no cross-column boxes).
+ * Gap maps into the Patient column; every slot also paints Patient for continuity.
+ */
 export function buildFootprintRuns(slots: BookingSlot[]): FootprintRun[] {
   const byType = new Map<string, number[]>();
   for (const slot of slots) {
-    const list = byType.get(slot.resource_type) ?? [];
+    const displayType = slot.resource_type === "gap" ? "patient" : slot.resource_type;
+    const list = byType.get(displayType) ?? [];
     list.push(slot.slot_index);
-    byType.set(slot.resource_type, list);
+    byType.set(displayType, list);
+    if (displayType !== "patient") {
+      const patientList = byType.get("patient") ?? [];
+      patientList.push(slot.slot_index);
+      byType.set("patient", patientList);
+    }
   }
 
   const runs: FootprintRun[] = [];
   for (const [resourceType, indices] of byType) {
-    const sorted = [...indices].sort((a, b) => a - b);
+    const sorted = [...new Set(indices)].sort((a, b) => a - b);
     let runStart = sorted[0];
     let prev = sorted[0];
     for (let i = 1; i < sorted.length; i++) {
@@ -105,7 +114,7 @@ function FootprintRuns({
         const left = COL_LEFT[run.resourceType] ?? "0%";
         const top = run.startSlot * ROW_H;
         const height = (run.endSlotExclusive - run.startSlot) * ROW_H;
-        const isGap = run.resourceType === "gap";
+        const isGap = run.resourceType === "gap" || run.resourceType === "patient";
 
         return (
           <div

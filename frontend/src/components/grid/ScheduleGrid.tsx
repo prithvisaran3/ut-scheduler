@@ -165,6 +165,16 @@ export function ScheduleGrid({
                   slot={slot}
                   resourceType={col.resource_type}
                   mode={mode}
+                  showName={(() => {
+                    if (mode !== "admin" || slot.occupied <= 0 || !slot.occupants[0]?.patient_name) {
+                      return false;
+                    }
+                    if (slot.is_uptake) return false;
+                    const prev = col.slots[slot.slot_index - 1];
+                    const bid = slot.occupants[0]?.booking_id;
+                    if (!prev || prev.occupied <= 0) return true;
+                    return prev.occupants[0]?.booking_id !== bid;
+                  })()}
                   selected={
                     !!drag &&
                     drag.colIndex === colIndex &&

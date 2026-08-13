@@ -1,5 +1,8 @@
 import { strings } from "../../content/strings";
 import { allSlotLabels } from "../../lib/time";
+import { SLOT_MINUTES } from "../../lib/scheduleConfig";
+
+const SLOTS_PER_HOUR = 60 / SLOT_MINUTES;
 
 export function TimeGutter() {
   const labels = allSlotLabels();
@@ -11,15 +14,26 @@ export function TimeGutter() {
       >
         {strings.grid.time}
       </div>
-      {labels.map((label) => (
-        <div
-          key={label}
-          className="time-label flex items-start px-2 pt-1 text-[length:var(--text-11)] text-[var(--color-grey-500)]"
-          style={{ height: "var(--grid-row-height)" }}
-        >
-          {label.endsWith(":00") ? label : ""}
-        </div>
-      ))}
+      {labels.map((label, i) => {
+        const isHour = i % SLOTS_PER_HOUR === 0;
+        return (
+          <div
+            key={`${label}-${i}`}
+            className="time-label flex items-start px-2 pt-0.5"
+            style={{
+              height: "var(--grid-row-height)",
+              borderTop: isHour
+                ? "1px solid var(--grid-hour-border)"
+                : "1px solid var(--grid-quarter-border)",
+              fontSize: isHour ? "var(--text-11)" : "var(--text-10)",
+              color: isHour ? "var(--color-grey-500)" : "var(--color-grey-300)",
+              fontWeight: isHour ? 500 : 400,
+            }}
+          >
+            {isHour ? label : ""}
+          </div>
+        );
+      })}
     </div>
   );
 }

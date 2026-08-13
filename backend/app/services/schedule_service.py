@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.schedule_config import (
     DAY_END_HOUR,
     DAY_START_HOUR,
+    DISPLAY_COLUMNS,
     RESOURCE_TYPES,
     SLOT_MINUTES,
     SLOTS_PER_DAY,
@@ -144,82 +145,71 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
     # Patients get counts only — never booking_id / patient_name / pathway_name.
     occupants: dict[str, dict[int, list[OccupantOut]]] = {t: {} for t in RESOURCE_TYPES}
     occupied_counts: dict[str, dict[int, int]] = {t: {} for t in RESOURCE_TYPES}
-    gap_occupied: dict[int, int] = {}
+    # Patient column: continuous across the full booking span, including gaps.
+    patient_occupants: dict[int, list[OccupantOut]] = {}
+    patient_booking_ids: dict[int, set[UUID]] = {}
+    uptake_slots: set[int] = set()
 
     for booking in bookings:
+        admin_info = (
+            OccupantOut(
+                booking_id=booking.id,
+                patient_name=booking.patient.full_name,
+                pathway_name=booking.pathway.name if booking.pathway else None,
+            )
+            if is_admin
+            else None
+        )
         for slot in booking.slots:
             rtype = slot.resource_type.value
+            # Every pathway block — including gap — occupies the Patient column.
+            if is_admin and admin_info is not None:
+                patient_occupants.setdefault(slot.slot_index, []).append(admin_info)
+            else:
+                patient_booking_ids.setdefault(slot.slot_index, set()).add(booking.id)
+
             if rtype == "gap":
-                gap_occupied[slot.slot_index] = gap_occupied.get(slot.slot_index, 0) + 1
+                uptake_slots.add(slot.slot_index)
                 continue
+
             occupied_counts.setdefault(rtype, {})
             occupied_counts[rtype][slot.slot_index] = (
                 occupied_counts[rtype].get(slot.slot_index, 0) + 1
             )
-            if is_admin:
-                info = OccupantOut(
-                    booking_id=booking.id,
-                    patient_name=booking.patient.full_name,
-                    pathway_name=booking.pathway.name if booking.pathway else None,
+            if is_admin and admin_info is not None:
+                occupants.setdefault(rtype, {}).setdefault(slot.slot_index, []).append(
+                    admin_info
                 )
-                occupants.setdefault(rtype, {}).setdefault(slot.slot_index, []).append(info)
 
     columns: list[ResourceColumnOut] = []
 
-    # Column order depends on role
-    if is_admin:
-        column_types = list(RESOURCE_TYPES) + ["patient"]
-    else:
-        column_types = ["doctor", "nmt", "gap", "scan"]
-
-    for rtype in column_types:
-        if rtype == "gap":
-            slots = []
-            for i in range(SLOTS_PER_DAY):
-                occ = gap_occupied.get(i, 0)
-                slots.append(
-                    ResourceSlotOut(
-                        slot_index=i,
-                        occupied=occ,
-                        capacity=999,
-                        blocked=False,
-                        free=occ == 0,
-                        occupants=[],
-                    )
-                )
-            columns.append(
-                ResourceColumnOut(
-                    resource_id=None,
-                    resource_type="gap",
-                    name="Gap",
-                    capacity=999,
-                    slots=slots,
-                )
-            )
-            continue
-
+    # Spreadsheet order for both roles: Doctor | NMT | Patient | Scan
+    for rtype in DISPLAY_COLUMNS:
         if rtype == "patient":
-            # Merged patient activity across the row for admin display
             slots = []
             for i in range(SLOTS_PER_DAY):
-                merged: list[OccupantOut] = []
-                for rt in RESOURCE_TYPES:
-                    merged.extend(occupants.get(rt, {}).get(i, []))
-                # de-dupe by booking_id
-                seen: set[UUID] = set()
-                unique: list[OccupantOut] = []
-                for o in merged:
-                    if o.booking_id not in seen:
-                        seen.add(o.booking_id)
-                        unique.append(o)
+                if is_admin:
+                    merged = patient_occupants.get(i, [])
+                    seen: set[UUID] = set()
+                    unique: list[OccupantOut] = []
+                    for o in merged:
+                        if o.booking_id not in seen:
+                            seen.add(o.booking_id)
+                            unique.append(o)
+                    occupied = len(unique)
+                    occ_list = unique
+                else:
+                    occupied = len(patient_booking_ids.get(i, set()))
+                    occ_list = []
                 slots.append(
                     ResourceSlotOut(
                         slot_index=i,
-                        occupied=len(unique),
+                        occupied=occupied,
                         capacity=1,
                         blocked=False,
-                        free=len(unique) == 0,
-                        occupants=unique if is_admin else [],
+                        free=occupied == 0,
+                        occupants=occ_list,
+                        is_uptake=occupied > 0 and i in uptake_slots,
                     )
                 )
             columns.append(

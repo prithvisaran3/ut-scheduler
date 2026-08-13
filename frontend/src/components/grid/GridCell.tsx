@@ -1,62 +1,79 @@
 import type { ResourceSlot } from "../../types/schedule";
 import { strings } from "../../content/strings";
+import { SLOT_MINUTES } from "../../lib/scheduleConfig";
 
 interface Props {
   slot: ResourceSlot;
   resourceType: string;
   mode?: "patient" | "admin";
+  /** Show patient name — only the first row of a contiguous booking run. */
+  showName?: boolean;
   selected?: boolean;
   onMouseDown?: () => void;
   onMouseEnter?: () => void;
 }
 
+const SLOTS_PER_HOUR = 60 / SLOT_MINUTES;
+
 export function GridCell({
   slot,
   resourceType,
   mode = "admin",
+  showName = false,
   selected,
   onMouseDown,
   onMouseEnter,
 }: Props) {
-  const isGap = resourceType === "gap";
+  const isPatientCol = resourceType === "patient";
   const occupied = slot.occupied > 0;
-  const blocked = slot.blocked && !isGap;
-  const showName =
-    mode === "admin" && occupied && !isGap && !!slot.occupants[0]?.patient_name;
+  const blocked = slot.blocked && !isPatientCol;
+  const isUptake = isPatientCol && !!slot.is_uptake && occupied;
   const unavailableHint =
-    mode === "patient" && !isGap && (occupied || blocked)
+    mode === "patient" && !isPatientCol && (occupied || blocked)
       ? strings.grid.unavailable
       : undefined;
 
-  // Priority: selection overlay > booked (navy) > blocked (hatch) > gap tint > empty
+  const hourBoundary = slot.slot_index % SLOTS_PER_HOUR === 0;
+
+  // Priority: selection > booked/uptake > blocked hatch > empty
   let bg = "transparent";
   if (selected) {
     bg = "var(--overlay-marquee)";
-  } else if (occupied && !isGap) {
+  } else if (occupied && isUptake) {
+    bg = "var(--color-grey-100)";
+  } else if (occupied) {
     bg = "var(--color-navy-700)";
   } else if (blocked) {
     bg = "var(--pattern-blocked)";
-  } else if (occupied && isGap) {
-    bg = "var(--color-grey-100)";
   }
+
+  const name =
+    showName && mode === "admin" && occupied && !isUptake
+      ? slot.occupants[0]?.patient_name
+      : undefined;
 
   return (
     <div
-      className="relative box-border border-b border-r border-[var(--color-grey-200)]"
+      className="relative box-border border-r border-[var(--color-grey-200)]"
       style={{
         height: "var(--grid-row-height)",
         background: bg,
-        cursor: isGap || resourceType === "patient" ? "default" : "crosshair",
+        borderTop: hourBoundary
+          ? "1px solid var(--grid-hour-border)"
+          : "1px solid var(--grid-quarter-border)",
+        cursor: isPatientCol ? "default" : "crosshair",
+        opacity: isUptake ? 0.85 : 1,
       }}
       title={unavailableHint}
       aria-label={unavailableHint}
       data-blocked={blocked ? "true" : undefined}
-      onMouseDown={onMouseDown}
-      onMouseEnter={onMouseEnter}
+      data-uptake={isUptake ? "true" : undefined}
+      onMouseDown={isPatientCol ? undefined : onMouseDown}
+      onMouseEnter={isPatientCol ? undefined : onMouseEnter}
     >
-      {showName ? (
-        <span className="absolute inset-x-1 top-1 truncate text-[length:var(--text-10)] text-[var(--color-white)]">
-          {slot.occupants[0].patient_name}
+      {name ? (
+        <span className="absolute inset-x-0.5 top-0.5 truncate text-[length:var(--text-10)] leading-none text-[var(--color-white)]">
+          {name}
         </span>
       ) : null}
     </div>

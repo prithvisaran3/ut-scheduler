@@ -1,4 +1,4 @@
-import { SLOTS_PER_DAY } from "../../lib/scheduleConfig";
+import { GRID_ROW_HEIGHT_PX, SLOTS_PER_DAY } from "../../lib/scheduleConfig";
 
 interface Props {
   slotIndex: number;
@@ -8,12 +8,10 @@ interface Props {
 export function NowLine({ slotIndex }: Props) {
   if (slotIndex < 0 || slotIndex >= SLOTS_PER_DAY) return null;
 
-  const rowH = 32; // matches --grid-row-height
-
   return (
     <div
       className="pointer-events-none absolute left-0 right-0 z-10"
-      style={{ top: slotIndex * rowH }}
+      style={{ top: slotIndex * GRID_ROW_HEIGHT_PX }}
       aria-hidden
     >
       <div className="relative h-px bg-[var(--color-salmon-500)]">

@@ -143,7 +143,7 @@ interface Props {
 export function PathwayBuilderModal({ open, onClose, pathway = null }: Props) {
   const create = useCreatePathway();
   const [palette, setPalette] = useState<Record<StepType, number>>({
-    doctor: 30,
+    doctor: 45,
     nmt: 30,
     gap: 60,
     scan: 60,
@@ -171,7 +171,7 @@ export function PathwayBuilderModal({ open, onClose, pathway = null }: Props) {
       setSteps([]);
       reset({ name: "" });
     }
-    setPalette({ doctor: 30, nmt: 30, gap: 60, scan: 60 });
+    setPalette({ doctor: 45, nmt: 30, gap: 60, scan: 60 });
     setActiveId(null);
   }, [open, pathway, reset]);
 

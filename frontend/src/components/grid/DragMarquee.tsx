@@ -1,5 +1,6 @@
 import { strings } from "../../content/strings";
 import { slotIndexToLabel } from "../../lib/time";
+import { GRID_ROW_HEIGHT_PX } from "../../lib/scheduleConfig";
 
 interface Props {
   resourceType: string;
@@ -21,7 +22,7 @@ export function DragMarquee({
   const top = Math.min(startSlot, endSlot);
   const bottom = Math.max(startSlot, endSlot);
   const count = bottom - top + 1;
-  const height = count * 32;
+  const height = count * GRID_ROW_HEIGHT_PX;
   // Flip below the selection when near the header so the toolbar never covers column labels.
   const toolbarBelow = top <= 2;
 
@@ -29,7 +30,7 @@ export function DragMarquee({
     <div
       className="pointer-events-none absolute z-30"
       style={{
-        top: top * 32,
+        top: top * GRID_ROW_HEIGHT_PX,
         height,
         left: 0,
         right: 0,

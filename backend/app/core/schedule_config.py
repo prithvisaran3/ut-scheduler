@@ -1,31 +1,42 @@
-"""Scheduling constants — keep in sync with frontend/src/lib/scheduleConfig.ts."""
+"""Scheduling constants — keep in sync with frontend/src/lib/scheduleConfig.ts.
+
+Ground truth: client spreadsheet (15-minute slots, 08:00–17:00).
+The sheet's 17:00 row is the closing boundary, not a bookable slot → 36 slots.
+"""
 
 from __future__ import annotations
 
 DAY_START_HOUR: int = 8
-DAY_END_HOUR: int = 20
-SLOT_MINUTES: int = 30
-SLOTS_PER_DAY: int = ((DAY_END_HOUR - DAY_START_HOUR) * 60) // SLOT_MINUTES  # 24
+DAY_END_HOUR: int = 17
+SLOT_MINUTES: int = 15
+SLOTS_PER_DAY: int = ((DAY_END_HOUR - DAY_START_HOUR) * 60) // SLOT_MINUTES  # 36
 
-# Capacity-bearing resources only. GAP is wait/uptake time, not a resource.
+# Capacity-bearing resources only. GAP is uptake wait — not a capacity row.
 RESOURCE_TYPES: list[str] = ["doctor", "nmt", "scan"]
 
-# Pathway step types include gap (non-capacity).
+# Display columns match the spreadsheet: Doctor | NMT | Patient | Scan.
+# Patient is display-only (not an engine capacity row).
+DISPLAY_COLUMNS: list[str] = ["doctor", "nmt", "patient", "scan"]
+
+# Pathway step types include gap (non-capacity, stored on booking slots).
 STEP_TYPES: list[str] = ["doctor", "nmt", "gap", "scan"]
 
 DEFAULT_CAPACITY: int = 1
 
-# Pathway 1 ground truth (United Theranostics interview example).
-# Design-file compositions are visual artifacts — this is authoritative.
+# Pathway 1 ground truth — spreadsheet Sheet4 (15-min slots).
+# Doctor 45 | NMT 30 | GAP 60 | Scan 60 | Doctor 30 → 15 blocks / 225 min.
 PATHWAY_1_STEPS: list[dict] = [
-    {"resource_type": "doctor", "duration_minutes": 90, "block_count": 3, "sequence_order": 0},
-    {"resource_type": "nmt", "duration_minutes": 30, "block_count": 1, "sequence_order": 1},
-    {"resource_type": "gap", "duration_minutes": 60, "block_count": 2, "sequence_order": 2},
-    {"resource_type": "scan", "duration_minutes": 60, "block_count": 2, "sequence_order": 3},
-    {"resource_type": "doctor", "duration_minutes": 30, "block_count": 1, "sequence_order": 4},
+    {"resource_type": "doctor", "duration_minutes": 45, "block_count": 3, "sequence_order": 0},
+    {"resource_type": "nmt", "duration_minutes": 30, "block_count": 2, "sequence_order": 1},
+    {"resource_type": "gap", "duration_minutes": 60, "block_count": 4, "sequence_order": 2},
+    {"resource_type": "scan", "duration_minutes": 60, "block_count": 4, "sequence_order": 3},
+    {"resource_type": "doctor", "duration_minutes": 30, "block_count": 2, "sequence_order": 4},
 ]
 
-PATHWAY_1_TOTAL_BLOCKS: int = 9
-PATHWAY_1_TOTAL_MINUTES: int = 270  # 4h 30m
+PATHWAY_1_TOTAL_BLOCKS: int = 15
+PATHWAY_1_TOTAL_MINUTES: int = 225  # 3h 45m
+
+# Slot index for 10:00 with DAY_START_HOUR=8 and SLOT_MINUTES=15.
+PATHWAY_1_SHEET4_START_SLOT: int = 8  # 10:00
 
 MAX_REJECTED_ATTEMPTS: int = 3

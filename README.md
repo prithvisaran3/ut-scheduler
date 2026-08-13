@@ -74,12 +74,13 @@ App: http://localhost:5173
 | Day hours / slot length / resources | `backend/app/core/schedule_config.py` **and** `frontend/src/lib/scheduleConfig.ts` (keep in sync) |
 | Scheduling algorithm           | `backend/app/services/scheduling_engine.py`              |
 
-## Pathway 1 (ground truth)
+## Pathway 1 (ground truth — client spreadsheet)
 
-Doctor 90m → NMT 30m → GAP 60m → Scan 60m → Doctor 30m  
-**9 blocks · 4h 30m**
+Doctor 45m → NMT 30m → GAP 60m → Scan 60m → Doctor 30m  
+**15 blocks · 3h 45m** (15-minute slots, 08:00–17:00)
 
-(Design-file pathway compositions are visual artifacts — not authoritative.)
+Display columns: **Doctor | NMT | Patient | Scan** (no Gap column — uptake is
+an emergent Patient-column state).
 
 ## Tests
 

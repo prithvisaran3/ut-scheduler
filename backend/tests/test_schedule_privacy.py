@@ -85,7 +85,7 @@ def test_patient_schedule_has_no_identity_or_patient_column(test_engine) -> None
             pathway.steps.append(
                 PathwayStep(
                     resource_type=StepResourceType.doctor,
-                    duration_minutes=30,
+                    duration_minutes=15,
                     block_count=1,
                     sequence_order=0,
                 )
@@ -114,7 +114,7 @@ def test_patient_schedule_has_no_identity_or_patient_column(test_engine) -> None
             assert [c.resource_type for c in patient_day.columns] == [
                 "doctor",
                 "nmt",
-                "gap",
+                "patient",
                 "scan",
             ]
             payload = patient_day.model_dump(mode="json")

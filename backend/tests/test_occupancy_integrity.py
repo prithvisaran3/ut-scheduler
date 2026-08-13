@@ -106,7 +106,7 @@ def test_search_never_overlaps_confirmed_booking(test_engine) -> None:
                 pathway.steps.append(
                     PathwayStep(
                         resource_type=rtype,
-                        duration_minutes=blocks * 30,
+                        duration_minutes=blocks * 15,
                         block_count=blocks,
                         sequence_order=order,
                     )
@@ -265,7 +265,7 @@ def test_confirm_booking_rejects_missing_resource(test_engine) -> None:
             pathway.steps.append(
                 PathwayStep(
                     resource_type=StepResourceType.scan,
-                    duration_minutes=30,
+                    duration_minutes=15,
                     block_count=1,
                     sequence_order=0,
                 )

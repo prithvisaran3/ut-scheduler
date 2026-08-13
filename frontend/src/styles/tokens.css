@@ -86,9 +86,11 @@
   --overlay-stencil-flight: rgba(253, 228, 220, 0.55);
 
   /* Grid geometry */
-  --grid-row-height: 32px;
-  --grid-gutter-width: 88px;
+  --grid-row-height: 24px;
+  --grid-gutter-width: 72px;
   --grid-header-height: 36px;
+  --grid-hour-border: var(--color-grey-300);
+  --grid-quarter-border: var(--color-grey-200);
 
   /* Type scale (Inter) */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;

@@ -11,6 +11,8 @@ export interface ResourceSlot {
   blocked: boolean;
   free: boolean;
   occupants: Occupant[];
+  /** Patient-column uptake/gap segment — resources free, patient still present. */
+  is_uptake?: boolean;
 }
 
 export interface ResourceColumn {
