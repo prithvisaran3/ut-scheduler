@@ -178,6 +178,21 @@ def test_inconsistent_block_count_raises() -> None:
         )
 
 
+def test_non_multiple_duration_raises() -> None:
+    """A 20-minute step must not silently truncate to 1×15-min block."""
+    with pytest.raises(ValueError, match="multiple of"):
+        build_requirement_array(
+            [
+                {
+                    "resource_type": "doctor",
+                    "duration_minutes": 20,
+                    "block_count": 1,
+                    "sequence_order": 0,
+                }
+            ]
+        )
+
+
 def test_feasible_starts_lists_every_valid_window() -> None:
     """A short pathway that fits in exactly 3 places must return those 3 starts."""
     used, cap = _empty_day()

@@ -79,12 +79,16 @@ def normalize_steps(steps: Sequence[PathwayStepLike | dict]) -> list[PathwayStep
 def build_requirement_array(steps: Sequence[PathwayStepLike | dict]) -> np.ndarray:
     """Flatten pathway steps into a length-L array of resource indices (or GAP_SENTINEL).
 
-    Each position corresponds to one 30-minute block along the pathway.
+    Each position corresponds to one SLOT_MINUTES block along the pathway.
     Gap offsets require nothing and always pass capacity checks.
     """
     ordered = normalize_steps(steps)
     parts: list[int] = []
     for step in ordered:
+        if step.duration_minutes % SLOT_MINUTES != 0:
+            raise ValueError(
+                f"duration_minutes {step.duration_minutes} must be a multiple of {SLOT_MINUTES}"
+            )
         expected = step.duration_minutes // SLOT_MINUTES
         if step.block_count != expected:
             raise ValueError(
