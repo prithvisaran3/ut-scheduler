@@ -243,8 +243,8 @@ export function PatientBookingPage() {
         />
       ) : null}
 
-      <div className="relative flex min-h-0 min-w-0 flex-1">
-        <div className="relative flex min-h-0 min-w-0 flex-[1_1_65%] flex-col px-8 pb-0">
+      <div className="relative z-0 flex min-h-0 min-w-0 flex-1 overflow-hidden">
+        <div className="relative flex min-h-0 min-w-0 flex-[1_1_65%] flex-col overflow-hidden px-8 pb-0">
           {schedule.isError ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center text-[var(--color-grey-700)]">
               <p className="text-[length:var(--text-15)] font-medium">
@@ -262,7 +262,13 @@ export function PatientBookingPage() {
               </Button>
             </div>
           ) : schedule.data ? (
-            <div className={noFit || weekend ? "min-h-0 flex-1 opacity-50 blur-[3px]" : "min-h-0 flex-1"}>
+            <div
+              className={
+                noFit || weekend
+                  ? "min-h-0 flex-1 overflow-hidden opacity-50 [filter:blur(3px)]"
+                  : "min-h-0 flex-1"
+              }
+            >
               <ScheduleGrid
                 schedule={schedule.data}
                 mode="patient"
@@ -343,7 +349,7 @@ export function PatientBookingPage() {
       </div>
 
       <footer
-        className="flex h-[88px] flex-none items-center justify-between border-t border-[var(--color-grey-200)] bg-[var(--color-white)] px-8"
+        className="relative z-50 flex h-[88px] flex-none items-center justify-between border-t border-[var(--color-grey-200)] bg-[var(--color-white)] px-8"
         style={{ boxShadow: "var(--shadow-bottom-bar)" }}
       >
         <div>
