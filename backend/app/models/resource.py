@@ -16,6 +16,7 @@ class ResourceType(str, enum.Enum):
     doctor = "doctor"
     nmt = "nmt"
     scan = "scan"
+    nurse = "nurse"
 
 
 class Resource(Base):

@@ -16,6 +16,7 @@ class StepResourceType(str, enum.Enum):
     nmt = "nmt"
     gap = "gap"
     scan = "scan"
+    nurse = "nurse"
 
 
 class Pathway(Base):
