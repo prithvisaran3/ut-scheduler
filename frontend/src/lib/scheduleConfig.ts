@@ -14,16 +14,20 @@ export const CLINIC_TIMEZONE = import.meta.env.VITE_CLINIC_TIMEZONE || "America/
 export const SLOTS_PER_DAY = ((DAY_END_HOUR - DAY_START_HOUR) * 60) / SLOT_MINUTES; // 36
 
 /** Capacity-bearing resources only — GAP is excluded from the engine. */
-export const RESOURCE_TYPES = ["doctor", "nmt", "scan"] as const;
+export const RESOURCE_TYPES = ["doctor", "nmt", "scan", "nurse"] as const;
 export type CapacityResourceType = (typeof RESOURCE_TYPES)[number];
 
-/** Spreadsheet admin grid: Doctor | NMT | Patient | Scan */
-export const ADMIN_DISPLAY_COLUMNS = ["doctor", "nmt", "patient", "scan"] as const;
-/** Patient grid: Doctor | NMT | GAP | Scan (no Patient column). */
-export const PATIENT_DISPLAY_COLUMNS = ["doctor", "nmt", "gap", "scan"] as const;
+/** Admin grid: Doctor | NMT | Nurse | Patient | Scan */
+export const ADMIN_DISPLAY_COLUMNS = ["doctor", "nmt", "nurse", "patient", "scan"] as const;
+/** Patient grid: Doctor | NMT | Nurse | GAP | Scan (no Patient column). */
+export const PATIENT_DISPLAY_COLUMNS = ["doctor", "nmt", "nurse", "gap", "scan"] as const;
 
-export const STEP_TYPES = ["doctor", "nmt", "gap", "scan"] as const;
+export const STEP_TYPES = ["doctor", "nmt", "nurse", "gap", "scan"] as const;
 export type StepType = (typeof STEP_TYPES)[number];
+
+export function isCapacityResource(type: string): type is CapacityResourceType {
+  return (RESOURCE_TYPES as readonly string[]).includes(type);
+}
 
 export const DEFAULT_CAPACITY = 1;
 

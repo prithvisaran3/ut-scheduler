@@ -13,15 +13,13 @@ import { useLogout } from "../hooks/useAuth";
 import { useScheduleStore } from "../store/scheduleStore";
 import { useAuthStore } from "../store/authStore";
 import { minutesToDurationLabel, slotIndexToLabel } from "../lib/time";
+import { RESOURCE_TYPES } from "../lib/scheduleConfig";
 import { ApiError } from "../api/client";
 import type { ScheduleDay } from "../types/schedule";
 
 function utilizationPercent(schedule: ScheduleDay): number {
-  const cols = schedule.columns.filter(
-    (c) =>
-      c.resource_type === "doctor" ||
-      c.resource_type === "nmt" ||
-      c.resource_type === "scan",
+  const cols = schedule.columns.filter((c) =>
+    (RESOURCE_TYPES as readonly string[]).includes(c.resource_type),
   );
   let total = 0;
   let used = 0;

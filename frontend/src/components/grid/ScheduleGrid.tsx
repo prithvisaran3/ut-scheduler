@@ -7,7 +7,7 @@ import { TimeGutter } from "./TimeGutter";
 import { NowLine } from "./NowLine";
 import { DragMarquee } from "./DragMarquee";
 import { StencilSearchOverlay } from "../pathway/StencilSearchOverlay";
-import { GRID_ROW_HEIGHT_PX } from "../../lib/scheduleConfig";
+import { GRID_ROW_HEIGHT_PX, isCapacityResource, type CapacityResourceType } from "../../lib/scheduleConfig";
 import { clinicSlotIndex } from "../../lib/time";
 
 interface Props {
@@ -21,7 +21,7 @@ interface Props {
   onSearchAnimationComplete?: () => void;
   onReservedClick?: () => void;
   onToggleSlots?: (args: {
-    resource_type: "doctor" | "nmt" | "scan";
+    resource_type: CapacityResourceType;
     slot_indices: number[];
     blocked: boolean;
   }) => void;
@@ -43,7 +43,7 @@ export function ScheduleGrid({
   const rootRef = useRef<HTMLDivElement>(null);
   const rowsRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{
-    resourceType: "doctor" | "nmt" | "scan";
+    resourceType: CapacityResourceType;
     start: number;
     end: number;
     colIndex: number;
@@ -129,7 +129,7 @@ export function ScheduleGrid({
 
   const beginDrag = (resourceType: string, slotIndex: number, colIndex: number) => {
     if (mode !== "admin") return;
-    if (resourceType !== "doctor" && resourceType !== "nmt" && resourceType !== "scan") return;
+    if (!isCapacityResource(resourceType)) return;
     setIsDragging(true);
     setDrag({ resourceType, start: slotIndex, end: slotIndex, colIndex });
   };
@@ -248,6 +248,7 @@ export function ScheduleGrid({
                 result={searchResult}
                 animating={searching}
                 selectedStart={selectedStart}
+                columns={columns.map((c) => c.resource_type)}
                 onSelectStart={onSelectStart}
                 onAnimationComplete={onSearchAnimationComplete}
               />

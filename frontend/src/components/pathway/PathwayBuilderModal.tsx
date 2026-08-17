@@ -145,6 +145,7 @@ export function PathwayBuilderModal({ open, onClose, pathway = null }: Props) {
   const [palette, setPalette] = useState<Record<StepType, number>>({
     doctor: 45,
     nmt: 30,
+    nurse: 30,
     gap: 60,
     scan: 60,
   });
@@ -171,7 +172,7 @@ export function PathwayBuilderModal({ open, onClose, pathway = null }: Props) {
       setSteps([]);
       reset({ name: "" });
     }
-    setPalette({ doctor: 45, nmt: 30, gap: 60, scan: 60 });
+    setPalette({ doctor: 45, nmt: 30, nurse: 30, gap: 60, scan: 60 });
     setActiveId(null);
   }, [open, pathway, reset]);
 
@@ -319,7 +320,7 @@ export function PathwayBuilderModal({ open, onClose, pathway = null }: Props) {
                   >
                     {strings.pathwayBuilder.blocks}
                   </div>
-                  <div className="flex gap-2.5">
+                  <div className="flex flex-wrap gap-2.5">
                     {STEP_TYPES.map((type) => (
                       <div
                         key={type}

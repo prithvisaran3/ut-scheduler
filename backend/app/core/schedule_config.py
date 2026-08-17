@@ -17,15 +17,16 @@ DEFAULT_CLINIC_TIMEZONE: str = "America/New_York"  # Bethesda, MD
 SLOTS_PER_DAY: int = ((DAY_END_HOUR - DAY_START_HOUR) * 60) // SLOT_MINUTES  # 36
 
 # Capacity-bearing resources only. GAP is uptake wait — not a capacity row.
-RESOURCE_TYPES: list[str] = ["doctor", "nmt", "scan"]
+# Nurse is appended so existing engine row indices (doctor=0, nmt=1, scan=2) stay stable.
+RESOURCE_TYPES: list[str] = ["doctor", "nmt", "scan", "nurse"]
 
-# Admin grid matches the spreadsheet: Doctor | NMT | Patient | Scan.
-ADMIN_DISPLAY_COLUMNS: list[str] = ["doctor", "nmt", "patient", "scan"]
-# Patient grid: Doctor | NMT | GAP | Scan — no Patient column (privacy).
-PATIENT_DISPLAY_COLUMNS: list[str] = ["doctor", "nmt", "gap", "scan"]
+# Admin grid: Doctor | NMT | Nurse | Patient | Scan.
+ADMIN_DISPLAY_COLUMNS: list[str] = ["doctor", "nmt", "nurse", "patient", "scan"]
+# Patient grid: Doctor | NMT | Nurse | GAP | Scan — no Patient column (privacy).
+PATIENT_DISPLAY_COLUMNS: list[str] = ["doctor", "nmt", "nurse", "gap", "scan"]
 
 # Pathway step types include gap (non-capacity, stored on booking slots).
-STEP_TYPES: list[str] = ["doctor", "nmt", "gap", "scan"]
+STEP_TYPES: list[str] = ["doctor", "nmt", "nurse", "gap", "scan"]
 
 DEFAULT_CAPACITY: int = 1
 

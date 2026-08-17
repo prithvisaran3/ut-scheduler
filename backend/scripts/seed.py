@@ -1,4 +1,4 @@
-"""Seed ONLY the two login accounts and three capacity resources.
+"""Seed ONLY the two login accounts and four capacity resources.
 
 STANDING RULE — production / live verification hygiene
 -----------------------------------------------------
@@ -13,7 +13,7 @@ When verifying end-to-end against live data:
 
 This script deliberately seeds:
   - 2 users (admin + patient)
-  - 3 resources (doctor, nmt, scan @ capacity 1)
+  - 4 resources (doctor, nmt, scan, nurse @ capacity 1)
 and NOTHING else — no pathways, bookings, or availability blocks.
 
 Run from backend/:  python -m scripts.seed
@@ -80,6 +80,7 @@ def seed() -> None:
                 Resource(type=ResourceType.doctor, name="Doctor", capacity=1),
                 Resource(type=ResourceType.nmt, name="NMT", capacity=1),
                 Resource(type=ResourceType.scan, name="Scan", capacity=1),
+                Resource(type=ResourceType.nurse, name="Nurse", capacity=1),
             ]
         )
         db.commit()
@@ -103,7 +104,7 @@ def seed() -> None:
         print("=" * 60)
 
         assert n_users == 2 and emails == [ADMIN_EMAIL, PATIENT_EMAIL]
-        assert n_resources == 3
+        assert n_resources == 4
         assert n_pathways == 0 and n_bookings == 0 and n_slots == 0 and n_blocks == 0
     finally:
         db.close()

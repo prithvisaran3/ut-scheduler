@@ -60,6 +60,7 @@ def _ensure_resources(db, created_resource_ids: list) -> None:
         (ResourceType.doctor, "Doctor"),
         (ResourceType.nmt, "NMT"),
         (ResourceType.scan, "Scan"),
+        (ResourceType.nurse, "Nurse"),
     ]:
         existing = db.scalar(select(Resource).where(Resource.type == rtype))
         if existing is None:

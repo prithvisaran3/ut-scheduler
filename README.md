@@ -50,8 +50,8 @@ Health: http://localhost:8000/health
 | Admin   | `admin@unithera.com`      | `Theranostics2026!` |
 | Patient | `prithvi@unithera.com`    | `Theranostics2026!` |
 
-Seed creates **only** these two users and the three capacity resources
-(doctor / nmt / scan). No pathways, bookings, or availability blocks.
+Seed creates **only** these two users and the four capacity resources
+(doctor / nmt / scan / nurse). No pathways, bookings, or availability blocks.
 See `CONTRIBUTING.md` for production-database hygiene rules.
 
 ## Frontend setup

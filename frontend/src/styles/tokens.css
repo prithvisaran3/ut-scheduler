@@ -11,6 +11,7 @@
   --color-navy-800: #123156;
   --color-navy-700: #1B4275;
   --color-navy-600: #275A96;
+  --color-navy-500: #3E6FA8;
   --color-navy-300: #8FA8C4;
   --color-navy-100: #D6E0EC;
   --color-navy-50: #EEF3F8;
@@ -50,6 +51,7 @@
   --color-resource-doctor: var(--color-navy-800);
   --color-resource-nmt: var(--color-navy-700);
   --color-resource-scan: var(--color-navy-600);
+  --color-resource-nurse: var(--color-navy-500);
   --color-resource-gap-fg: var(--color-grey-300);
   --color-resource-gap-bg: var(--color-grey-100);
 

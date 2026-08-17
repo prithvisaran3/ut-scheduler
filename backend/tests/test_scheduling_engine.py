@@ -214,3 +214,28 @@ def test_feasible_starts_lists_every_valid_window() -> None:
     assert result.feasible_starts == [2, 5, 10]
     assert result.earliest_start_slot == 2
     assert result.end_slot == 3
+
+
+def test_nurse_is_a_capacity_row() -> None:
+    """Nurse occupies its own engine row; a busy nurse does not block the doctor."""
+    assert RESOURCE_TYPES[-1] == "nurse"
+    nurse = RESOURCE_TYPES.index("nurse")
+    req = build_requirement_array(
+        [
+            {
+                "resource_type": "nurse",
+                "duration_minutes": 30,
+                "block_count": 2,
+                "sequence_order": 0,
+            }
+        ]
+    )
+    assert list(req) == [nurse, nurse]
+
+    used, cap = _empty_day()
+    used[nurse, 0] = 1
+    result = find_earliest_fit(used, cap, req)
+    assert result.earliest_start_slot == 1
+    assert result.rejected_attempts[0].blocking_resource == "nurse"
+    assert used[0, 0] == 0  # doctor row untouched
+

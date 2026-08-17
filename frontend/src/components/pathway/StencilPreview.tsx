@@ -25,7 +25,9 @@ export function stencilSegmentStyle(resourceType: string): CSSProperties {
         ? "var(--color-resource-nmt)"
         : resourceType === "scan"
           ? "var(--color-resource-scan)"
-          : "var(--color-navy-700)";
+          : resourceType === "nurse"
+            ? "var(--color-resource-nurse)"
+            : "var(--color-navy-700)";
   return { background: color };
 }
 

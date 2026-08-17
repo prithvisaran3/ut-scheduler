@@ -76,6 +76,7 @@ def test_patient_schedule_has_gap_column_no_identity(test_engine) -> None:
                 (ResourceType.doctor, "Doctor"),
                 (ResourceType.nmt, "NMT"),
                 (ResourceType.scan, "Scan"),
+                (ResourceType.nurse, "Nurse"),
             ]:
                 existing = db.scalar(select(Resource).where(Resource.type == rtype))
                 if existing is None:
@@ -133,6 +134,7 @@ def test_patient_schedule_has_gap_column_no_identity(test_engine) -> None:
             assert [c.resource_type for c in patient_day.columns] == [
                 "doctor",
                 "nmt",
+                "nurse",
                 "gap",
                 "scan",
             ]
@@ -157,6 +159,7 @@ def test_patient_schedule_has_gap_column_no_identity(test_engine) -> None:
             assert [c.resource_type for c in own_day.columns] == [
                 "doctor",
                 "nmt",
+                "nurse",
                 "gap",
                 "scan",
             ]
@@ -167,6 +170,7 @@ def test_patient_schedule_has_gap_column_no_identity(test_engine) -> None:
             assert [c.resource_type for c in admin_day.columns] == [
                 "doctor",
                 "nmt",
+                "nurse",
                 "patient",
                 "scan",
             ]

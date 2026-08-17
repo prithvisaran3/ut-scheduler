@@ -26,16 +26,14 @@ import { GRID_ROW_HEIGHT_PX, SLOTS_PER_DAY } from "../../lib/scheduleConfig";
  */
 const ROW_H = GRID_ROW_HEIGHT_PX;
 
-/** Spreadsheet columns under the time gutter.
- * Admin: Doctor | NMT | Patient | Scan
- * Patient: Doctor | NMT | GAP | Scan (gap shares the third 25% lane) */
-const COL_LEFT: Record<string, string> = {
-  doctor: "0%",
-  nmt: "25%",
-  patient: "50%",
-  gap: "50%",
-  scan: "75%",
-};
+function columnBox(columns: string[], resourceType: string): { left: string; width: string } {
+  const n = Math.max(columns.length, 1);
+  const idx = Math.max(columns.indexOf(resourceType), 0);
+  return {
+    left: `${(idx / n) * 100}%`,
+    width: `calc(${100 / n}% - 8px)`,
+  };
+}
 
 const PLACEMENT_ID = "pathway-placement";
 
@@ -92,6 +90,7 @@ interface Props {
   result: BookingSearchResponse | null;
   animating: boolean;
   selectedStart: number | null;
+  columns: string[];
   onSelectStart?: (start: number) => void;
   onAnimationComplete?: () => void;
 }
@@ -138,15 +137,17 @@ function FootprintRuns({
   runs,
   landed,
   ghosting,
+  columns,
 }: {
   runs: FootprintRun[];
   landed: boolean;
   ghosting?: boolean;
+  columns: string[];
 }) {
   return (
     <>
       {runs.map((run) => {
-        const left = COL_LEFT[run.resourceType] ?? "0%";
+        const { left, width } = columnBox(columns, run.resourceType);
         const top = run.startSlot * ROW_H;
         const height = (run.endSlotExclusive - run.startSlot) * ROW_H;
         const soft = run.resourceType === "gap" || run.resourceType === "patient";
@@ -159,7 +160,7 @@ function FootprintRuns({
               top: top + 1,
               height: Math.max(height - 2, 2),
               left: `calc(${left} + 4px)`,
-              width: "calc(25% - 8px)",
+              width,
               borderRadius: "var(--radius-sm)",
               border: landed
                 ? "1.5px solid var(--color-salmon-500)"
@@ -180,9 +181,11 @@ function FootprintRuns({
 function DraggablePlacement({
   runs,
   enabled,
+  columns,
 }: {
   runs: FootprintRun[];
   enabled: boolean;
+  columns: string[];
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: PLACEMENT_ID,
@@ -204,7 +207,7 @@ function DraggablePlacement({
       {...listeners}
       {...attributes}
     >
-      <FootprintRuns runs={runs} landed ghosting={isDragging} />
+      <FootprintRuns runs={runs} landed ghosting={isDragging} columns={columns} />
     </div>
   );
 }
@@ -213,6 +216,7 @@ export function StencilSearchOverlay({
   result,
   animating,
   selectedStart,
+  columns,
   onSelectStart,
   onAnimationComplete,
 }: Props) {
@@ -362,7 +366,7 @@ export function StencilSearchOverlay({
           onDragCancel={onDragCancel}
         >
           <div className="relative h-full w-full">
-            <DraggablePlacement runs={runs} enabled />
+            <DraggablePlacement runs={runs} enabled columns={columns} />
           </div>
         </DndContext>
       ) : (
@@ -373,7 +377,7 @@ export function StencilSearchOverlay({
           animate={{ opacity: 1 }}
           transition={stencilFlightSpring}
         >
-          <FootprintRuns runs={runs} landed={phase === "landed"} />
+          <FootprintRuns runs={runs} landed={phase === "landed"} columns={columns} />
         </motion.div>
       )}
     </div>

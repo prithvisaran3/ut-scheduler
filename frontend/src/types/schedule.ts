@@ -1,3 +1,5 @@
+import type { CapacityResourceType } from "../lib/scheduleConfig";
+
 export interface Occupant {
   booking_id: string;
   patient_name?: string | null;
@@ -40,7 +42,7 @@ export interface ScheduleDay {
 
 export interface SlotPatchRequest {
   date: string;
-  resource_type: "doctor" | "nmt" | "scan";
+  resource_type: CapacityResourceType;
   slot_indices: number[];
   blocked: boolean;
 }

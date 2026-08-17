@@ -78,6 +78,7 @@ def test_concurrent_booking_only_one_succeeds(test_engine) -> None:
                 (ResourceType.doctor, "Doctor"),
                 (ResourceType.nmt, "NMT"),
                 (ResourceType.scan, "Scan"),
+                (ResourceType.nurse, "Nurse"),
             ]:
                 existing = db.scalar(select(Resource).where(Resource.type == rtype))
                 if existing is None:
