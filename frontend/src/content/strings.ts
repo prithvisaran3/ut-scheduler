@@ -145,6 +145,7 @@ export const strings = {
       nmt: "NMT",
       gap: "Gap",
       scan: "Scan",
+      nurse: "Nurse",
     },
   },
   empty: {
@@ -162,6 +163,7 @@ export const strings = {
     gap: "Gap",
     scan: "Scan",
     patient: "Patient",
+    nurse: "Nurse",
     you: "You",
     unavailable: "Unavailable",
   },
