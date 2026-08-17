@@ -264,9 +264,11 @@ export function PatientBookingPage() {
           ) : schedule.data ? (
             <div
               className={
+                // Must be a flex column: the grid's own scroll container sizes
+                // itself with flex-1, and collapses to content height without it.
                 noFit || weekend
-                  ? "min-h-0 flex-1 overflow-hidden opacity-50 [filter:blur(3px)]"
-                  : "min-h-0 flex-1"
+                  ? "flex min-h-0 flex-1 flex-col overflow-hidden opacity-50 [filter:blur(3px)]"
+                  : "flex min-h-0 flex-1 flex-col"
               }
             >
               <ScheduleGrid

@@ -7,6 +7,7 @@ import { TimeGutter } from "./TimeGutter";
 import { NowLine } from "./NowLine";
 import { DragMarquee } from "./DragMarquee";
 import { StencilSearchOverlay } from "../pathway/StencilSearchOverlay";
+import { GRID_ROW_HEIGHT_PX } from "../../lib/scheduleConfig";
 import { clinicSlotIndex } from "../../lib/time";
 
 interface Props {
@@ -40,6 +41,7 @@ export function ScheduleGrid({
 }: Props) {
   const columns = schedule.columns;
   const rootRef = useRef<HTMLDivElement>(null);
+  const rowsRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{
     resourceType: "doctor" | "nmt" | "scan";
     start: number;
@@ -66,6 +68,27 @@ export function ScheduleGrid({
     window.addEventListener("mouseup", onUp);
     return () => window.removeEventListener("mouseup", onUp);
   }, [isDragging]);
+
+  // An afternoon placement lands below the fold, so bring it into view — but
+  // only once the search animation has landed, or we scroll away from it.
+  const placementBlocks = searchResult?.total_blocks ?? 0;
+  useEffect(() => {
+    if (searching || selectedStart == null || placementBlocks === 0) return;
+    const root = rootRef.current;
+    const rows = rowsRef.current;
+    if (!root || !rows) return;
+
+    const rowsOrigin =
+      rows.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop;
+    const top = rowsOrigin + selectedStart * GRID_ROW_HEIGHT_PX;
+    const height = placementBlocks * GRID_ROW_HEIGHT_PX;
+    if (top >= root.scrollTop && top + height <= root.scrollTop + root.clientHeight) return;
+
+    root.scrollTo({
+      top: Math.max(top - Math.max((root.clientHeight - height) / 2, 16), 0),
+      behavior: "smooth",
+    });
+  }, [searching, selectedStart, placementBlocks]);
 
   // Stale selection must not survive a day change.
   useEffect(() => {
@@ -211,6 +234,7 @@ export function ScheduleGrid({
 
         {/* Cell origin = below header. Slot N → top: N * 24px. Scrolls with content. */}
         <div
+          ref={rowsRef}
           className="pointer-events-none absolute bottom-0 left-0 right-0 z-20"
           style={{ top: "var(--grid-header-height)" }}
         >
