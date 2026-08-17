@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ScheduleDay } from "../../types/schedule";
 import type { BookingSearchResponse } from "../../types/booking";
 import { strings } from "../../content/strings";
@@ -7,7 +7,7 @@ import { TimeGutter } from "./TimeGutter";
 import { NowLine } from "./NowLine";
 import { DragMarquee } from "./DragMarquee";
 import { StencilSearchOverlay } from "../pathway/StencilSearchOverlay";
-import { DAY_START_HOUR, SLOT_MINUTES } from "../../lib/scheduleConfig";
+import { clinicSlotIndex } from "../../lib/time";
 
 interface Props {
   schedule: ScheduleDay;
@@ -24,14 +24,6 @@ interface Props {
     slot_indices: number[];
     blocked: boolean;
   }) => void;
-}
-
-function currentSlotIndex(): number {
-  const now = new Date();
-  const minutes = now.getHours() * 60 + now.getMinutes();
-  const start = DAY_START_HOUR * 60;
-  const idx = Math.floor((minutes - start) / SLOT_MINUTES);
-  return idx;
 }
 
 export function ScheduleGrid({
@@ -56,13 +48,17 @@ export function ScheduleGrid({
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const nowIdx = useMemo(() => currentSlotIndex(), []);
-  const [liveNowIdx, setLiveNowIdx] = useState(nowIdx);
+  // The backend owns "now". We only extrapolate between fetches, correcting for
+  // any drift between the browser's clock and the server's.
+  const { clinic_now: clinicNow, clinic_timezone: clinicTz } = schedule;
+  const [liveNowIdx, setLiveNowIdx] = useState(schedule.current_slot_index);
   useEffect(() => {
-    setLiveNowIdx(currentSlotIndex());
-    const id = window.setInterval(() => setLiveNowIdx(currentSlotIndex()), 30_000);
+    const skewMs = Date.parse(clinicNow) - Date.now();
+    const tick = () => setLiveNowIdx(clinicSlotIndex(Date.now() + skewMs, clinicTz));
+    tick();
+    const id = window.setInterval(tick, 30_000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [clinicNow, clinicTz]);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -219,7 +215,8 @@ export function ScheduleGrid({
           style={{ top: "var(--grid-header-height)" }}
         >
           <div className="relative h-full" style={{ marginLeft: "var(--grid-gutter-width)" }}>
-            <NowLine slotIndex={liveNowIdx} />
+            {/* Only the clinic's today has a "now" — other days must not show a line. */}
+            {schedule.date === schedule.clinic_today ? <NowLine slotIndex={liveNowIdx} /> : null}
           </div>
           {mode === "patient" ? (
             <div className="absolute inset-0" style={{ left: "var(--grid-gutter-width)" }}>

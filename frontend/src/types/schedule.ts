@@ -30,6 +30,12 @@ export interface ScheduleDay {
   slot_minutes: number;
   slots_per_day: number;
   columns: ResourceColumn[];
+  /** IANA zone the clinic operates in — slot indices are offsets in this zone. */
+  clinic_timezone: string;
+  /** Server's current time, ISO-8601 with offset. The authority for the now-line. */
+  clinic_now: string;
+  clinic_today: string;
+  current_slot_index: number;
 }
 
 export interface SlotPatchRequest {

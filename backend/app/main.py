@@ -1,8 +1,11 @@
+from datetime import UTC, datetime
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 from app.api.v1.router import api_router
+from app.core.clock import clinic_now
 from app.core.config import settings
 
 
@@ -46,7 +49,14 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     def health() -> dict[str, str]:
-        return {"status": "ok"}
+        # Clinic vs UTC is reported so a host-timezone mismatch is visible
+        # without redeploying a probe.
+        return {
+            "status": "ok",
+            "clinic_timezone": settings.clinic_timezone,
+            "clinic_time": clinic_now().isoformat(),
+            "utc_time": datetime.now(UTC).isoformat(),
+        }
 
     return app
 

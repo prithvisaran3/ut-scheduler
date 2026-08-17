@@ -1,3 +1,4 @@
 # Dev / test only — not required to run the API.
 -r requirements.txt
 pytest>=8.3
+freezegun>=1.5

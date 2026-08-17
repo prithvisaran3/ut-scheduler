@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -45,3 +45,9 @@ class ScheduleDayOut(BaseModel):
     slot_minutes: int
     slots_per_day: int
     columns: list[ResourceColumnOut]
+    # The backend owns "now". Clients render the now-line from these instead of
+    # their own clock, so a patient in another timezone sees the clinic's day.
+    clinic_timezone: str
+    clinic_now: datetime
+    clinic_today: date
+    current_slot_index: int

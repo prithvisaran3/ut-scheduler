@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { format } from "date-fns";
+import { CLINIC_TIMEZONE } from "../lib/scheduleConfig";
+import { clinicDateString } from "../lib/time";
 
 interface ScheduleUiState {
   selectedDate: string;
@@ -9,7 +10,8 @@ interface ScheduleUiState {
 }
 
 export const useScheduleStore = create<ScheduleUiState>((set) => ({
-  selectedDate: format(new Date(), "yyyy-MM-dd"),
+  // The clinic's day, not the browser's — a patient abroad still lands on today.
+  selectedDate: clinicDateString(Date.now(), CLINIC_TIMEZONE),
   selectedPathwayId: null,
   setSelectedDate: (selectedDate) => set({ selectedDate }),
   setSelectedPathwayId: (selectedPathwayId) => set({ selectedPathwayId }),

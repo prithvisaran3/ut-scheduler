@@ -7,6 +7,10 @@
 export const DAY_START_HOUR = 8;
 export const DAY_END_HOUR = 17;
 export const SLOT_MINUTES = 15;
+
+/** Bootstrap default for "which day is it at the clinic", before any API call.
+ *  Once a schedule is loaded the backend's clinic_timezone is the authority. */
+export const CLINIC_TIMEZONE = import.meta.env.VITE_CLINIC_TIMEZONE || "America/New_York";
 export const SLOTS_PER_DAY = ((DAY_END_HOUR - DAY_START_HOUR) * 60) / SLOT_MINUTES; // 36
 
 /** Capacity-bearing resources only — GAP is excluded from the engine. */

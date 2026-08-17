@@ -9,6 +9,8 @@ import numpy as np
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.clock import clinic_now, current_slot_index
+from app.core.config import settings
 from app.core.schedule_config import (
     ADMIN_DISPLAY_COLUMNS,
     DAY_END_HOUR,
@@ -284,6 +286,7 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
             )
         )
 
+    now = clinic_now()
     return ScheduleDayOut(
         date=day,
         day_start_hour=DAY_START_HOUR,
@@ -291,6 +294,10 @@ def build_day_matrix(db: Session, day: date, viewer: User) -> ScheduleDayOut:
         slot_minutes=SLOT_MINUTES,
         slots_per_day=SLOTS_PER_DAY,
         columns=columns,
+        clinic_timezone=settings.clinic_timezone,
+        clinic_now=now,
+        clinic_today=now.date(),
+        current_slot_index=current_slot_index(now),
     )
 
 

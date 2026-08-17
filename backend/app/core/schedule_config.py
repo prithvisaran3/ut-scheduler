@@ -9,6 +9,11 @@ from __future__ import annotations
 DAY_START_HOUR: int = 8
 DAY_END_HOUR: int = 17
 SLOT_MINUTES: int = 15
+
+# Clinic wall-clock timezone. Slot indices are offsets from DAY_START_HOUR in
+# THIS zone, never in the server's local zone (Render runs UTC).
+# Override per deployment with the CLINIC_TIMEZONE env var.
+DEFAULT_CLINIC_TIMEZONE: str = "America/New_York"  # Bethesda, MD
 SLOTS_PER_DAY: int = ((DAY_END_HOUR - DAY_START_HOUR) * 60) // SLOT_MINUTES  # 36
 
 # Capacity-bearing resources only. GAP is uptake wait — not a capacity row.
