@@ -4,6 +4,7 @@ import { PathwaySelector } from "../components/pathway/PathwaySelector";
 import { EmptyStateCard } from "../components/pathway/EmptyStateCard";
 import { AvailableTimesPanel } from "../components/pathway/AvailableTimesPanel";
 import { BookingConfirmModal } from "../components/pathway/BookingConfirmModal";
+import { MyAppointmentsPanel } from "../components/pathway/MyAppointmentsPanel";
 import { DateStrip } from "../components/common/DateStrip";
 import { ScheduleGrid } from "../components/grid/ScheduleGrid";
 import { Button } from "../components/ui/Button";
@@ -14,6 +15,7 @@ import { usePathways } from "../hooks/usePathways";
 import { useSchedule } from "../hooks/useSchedule";
 import { useBookingSearch } from "../hooks/useBookingSearch";
 import { useConfirmBooking } from "../hooks/useConfirmBooking";
+import { useMyBookings } from "../hooks/useMyBookings";
 import { useLogout } from "../hooks/useAuth";
 import { useScheduleStore } from "../store/scheduleStore";
 import { useAuthStore } from "../store/authStore";
@@ -50,6 +52,7 @@ export function PatientBookingPage() {
   const schedule = useSchedule(selectedDate);
   const search = useBookingSearch();
   const confirm = useConfirmBooking();
+  const myBookings = useMyBookings();
 
   const [result, setResult] = useState<BookingSearchResponse | null>(null);
   const [landed, setLanded] = useState(false);
@@ -61,11 +64,17 @@ export function PatientBookingPage() {
   );
   const [toast, setToast] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [appointmentsOpen, setAppointmentsOpen] = useState(false);
 
   const weekend = useMemo(() => {
     const d = parseISO(selectedDate);
     return isSaturday(d) || isSunday(d);
   }, [selectedDate]);
+
+  const upcomingCount = useMemo(
+    () => myBookings.data?.filter((b) => !b.has_started).length ?? 0,
+    [myBookings.data],
+  );
 
   useEffect(() => {
     if (!pathways.data) return;
@@ -227,12 +236,29 @@ export function PatientBookingPage() {
           <div className="h-[18px] w-px bg-[var(--color-grey-200)]" />
           <DateStrip selectedDate={selectedDate} onChange={setSelectedDate} />
         </div>
-        <UserAvatarMenu
-          fullName={fullName}
-          roleLabel={strings.common.patient}
-          onLogout={logout}
-          logoutLabel={strings.patient.logout}
-        />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="relative inline-flex h-9 items-center rounded-[var(--radius-md)] px-3 text-[length:var(--text-13)] font-medium text-[var(--color-navy-900)] hover:bg-[var(--color-grey-50)]"
+            onClick={() => setAppointmentsOpen(true)}
+          >
+            {strings.myAppointments.button}
+            {upcomingCount > 0 ? (
+              <span
+                className="ml-2 inline-flex min-w-[18px] items-center justify-center rounded-[var(--radius-pill)] bg-[var(--color-salmon-500)] px-1.5 py-0.5 text-[length:var(--text-11)] font-semibold text-[var(--color-white)]"
+                aria-label={strings.myAppointments.countAria(upcomingCount)}
+              >
+                {upcomingCount}
+              </span>
+            ) : null}
+          </button>
+          <UserAvatarMenu
+            fullName={fullName}
+            roleLabel={strings.common.patient}
+            onLogout={logout}
+            logoutLabel={strings.patient.logout}
+          />
+        </div>
       </header>
 
       {pathways.data && pathways.data.length > 0 ? (
@@ -412,6 +438,31 @@ export function PatientBookingPage() {
           onUseSuggestion={useSuggestion}
         />
       ) : null}
+
+      <MyAppointmentsPanel
+        open={appointmentsOpen}
+        bookings={myBookings.data ?? []}
+        loading={myBookings.isLoading}
+        onClose={() => setAppointmentsOpen(false)}
+        onCancelled={(date, range) => {
+          setToast(strings.cancelDialog.success(range));
+          void myBookings.refetch();
+          if (date === selectedDate) {
+            void schedule.refetch();
+            if (selectedPathwayId && !weekend) {
+              search.mutate(
+                { pathway_id: selectedPathwayId, date: selectedDate },
+                {
+                  onSuccess: (data) => {
+                    setResult(data);
+                    setSelectedStart(data.earliest_start_slot);
+                  },
+                },
+              );
+            }
+          }
+        }}
+      />
 
       <Toast message={toast} onDismiss={dismissToast} />
     </div>

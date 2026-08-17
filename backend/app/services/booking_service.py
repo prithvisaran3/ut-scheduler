@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date, datetime
 from uuid import UUID
 
@@ -10,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.clock import clinic_now, slot_start
+from app.models.audit_log import AuditLog
 from app.models.availability_block import AvailabilityBlock
 from app.models.booking import Booking, BookingSlot, BookingStatus
 from app.models.pathway import Pathway, StepResourceType
@@ -254,7 +256,12 @@ def confirm_booking(
     return get_booking_out(db, booking.id)
 
 
-def get_booking_out(db: Session, booking_id: UUID) -> BookingOut:
+def get_booking_out(
+    db: Session,
+    booking_id: UUID,
+    *,
+    now: datetime | None = None,
+) -> BookingOut:
     booking = db.scalar(
         select(Booking)
         .where(Booking.id == booking_id)
@@ -282,26 +289,81 @@ def get_booking_out(db: Session, booking_id: UUID) -> BookingOut:
         status=booking.status,
         created_at=booking.created_at,
         slots=slots,
+        has_started=_has_started(
+            booking.date, booking.start_slot, now if now is not None else clinic_now()
+        ),
     )
 
 
 def list_my_bookings(db: Session, patient_id: UUID) -> list[BookingOut]:
+    """Confirmed bookings only, soonest first.
+
+    Cancelled bookings are deliberately excluded: to a patient a cancelled
+    appointment is not an appointment, and showing it invites re-cancelling
+    something that no longer holds a slot.
+    """
     rows = db.scalars(
         select(Booking)
         .where(Booking.patient_id == patient_id, Booking.status == BookingStatus.confirmed)
         .options(joinedload(Booking.slots), joinedload(Booking.pathway))
         .order_by(Booking.date, Booking.start_slot)
     ).unique().all()
-    return [get_booking_out(db, b.id) for b in rows]
+    now = clinic_now()
+    return [get_booking_out(db, b.id, now=now) for b in rows]
 
 
-def cancel_booking(db: Session, booking_id: UUID, actor: User) -> None:
+class BookingAlreadyStartedError(Exception):
+    """Patient-initiated cancellation of an appointment that is already underway."""
+
+
+def cancel_booking(
+    db: Session,
+    booking_id: UUID,
+    actor: User,
+    *,
+    now: datetime | None = None,
+) -> None:
     booking = db.scalar(select(Booking).where(Booking.id == booking_id))
     if booking is None:
         raise LookupError("Booking not found")
-    if actor.role.value != "admin" and booking.patient_id != actor.id:
+
+    is_admin = actor.role.value == "admin"
+    if not is_admin and booking.patient_id != actor.id:
         raise PermissionError("Cannot cancel another patient's booking")
+
+    # Once the appointment has begun it is a no-show, not a cancellation — the
+    # dose is already ordered. Staff can still correct the record.
+    moment = now if now is not None else clinic_now()
+    if not is_admin and _has_started(booking.date, booking.start_slot, moment):
+        raise BookingAlreadyStartedError(
+            "This appointment has already started and can't be cancelled online. "
+            "Please contact your care coordinator."
+        )
+
+    if booking.status == BookingStatus.cancelled:
+        # Already cancelled elsewhere (second tab, double submit) — the caller's
+        # intent is satisfied, so stay idempotent rather than erroring.
+        return
+
     booking.status = BookingStatus.cancelled
+    db.add(
+        AuditLog(
+            actor_id=actor.id,
+            action="booking.cancelled",
+            entity="booking",
+            entity_id=str(booking.id),
+            detail=json.dumps(
+                {
+                    "patient_id": str(booking.patient_id),
+                    "pathway_id": str(booking.pathway_id),
+                    "date": booking.date.isoformat(),
+                    "start_slot": booking.start_slot,
+                    "cancelled_by_role": actor.role.value,
+                    "clinic_time": moment.isoformat(),
+                }
+            ),
+        )
+    )
     db.commit()
 
 

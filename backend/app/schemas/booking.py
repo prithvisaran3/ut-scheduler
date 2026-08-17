@@ -52,6 +52,8 @@ class BookingOut(BaseModel):
     status: BookingStatus
     created_at: datetime | None = None
     slots: list[BookingSlotOut] = []
+    # Clinic-clock truth so the client never has to decide "is this in the past?"
+    has_started: bool = False
 
     model_config = {"from_attributes": True}
 

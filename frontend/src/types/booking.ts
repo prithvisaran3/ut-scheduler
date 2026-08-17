@@ -45,4 +45,5 @@ export interface Booking {
   status: "confirmed" | "cancelled";
   created_at?: string | null;
   slots: BookingSlot[];
+  has_started?: boolean;
 }

@@ -20,7 +20,7 @@ export function confirmBooking(body: BookingCreateRequest) {
   });
 }
 
-export function fetchMyBookings() {
+export function listMyBookings() {
   return apiFetch<Booking[]>("/bookings/mine");
 }
 

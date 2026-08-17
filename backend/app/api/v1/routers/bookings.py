@@ -8,7 +8,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.booking import BookingCreateRequest, BookingOut, BookingSearchRequest, BookingSearchResponse
 from app.services import booking_service
-from app.services.booking_service import BookingConflictError
+from app.services.booking_service import BookingAlreadyStartedError, BookingConflictError
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -61,3 +61,5 @@ def delete_booking(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except BookingAlreadyStartedError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
